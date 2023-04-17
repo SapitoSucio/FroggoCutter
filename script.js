@@ -17,9 +17,15 @@ const ctx = canvas.getContext('2d');
 const cropButton = document.getElementById('cropButton');
 // Create a new Cropper instance
 var cropper = new Cropper(canvas, {
-  aspectRatio: 16 / 9,
-  minCropBoxWidth: 200,
-  minCropBoxHeight: 100,
+	viewMode: 1,
+	dragMode: "move",
+	toggleDragModeOnDblclick: true,
+	movable: true,
+	responsive: true,
+	autoCropArea: 1,
+	aspectRatio: 16 / 9,
+	minCropBoxWidth: 200,
+	minCropBoxHeight: 200,
 
 });
 
@@ -360,3 +366,20 @@ function popularityQuantization(imageData, k) {
 
     return colorTable;
 }
+
+
+document.getElementById('aspectRatio169').addEventListener('click', () => {
+    cropper.setAspectRatio(16 / 9);
+});
+
+document.getElementById('aspectRatio43').addEventListener('click', () => {
+    cropper.setAspectRatio(4 / 3);
+});
+
+document.getElementById('aspectRatio11').addEventListener('click', () => {
+    cropper.setAspectRatio(1);
+});
+
+document.getElementById('aspectRatioFree').addEventListener('click', () => {
+    cropper.setAspectRatio(NaN);
+});
