@@ -1,3 +1,11 @@
+const darkModeBtn = document.getElementById('dark-mode-btn');
+const body = document.body;
+
+darkModeBtn.addEventListener('click', () => {
+  body.classList.toggle('dark-mode');
+});
+
+
 
 let checkbox8Bit = document.getElementById("8Bit");
 let selectPaletteMethod = document.getElementById("paletteMethod");
@@ -17,7 +25,7 @@ const ctx = canvas.getContext('2d');
 const cropButton = document.getElementById('cropButton');
 // Create a new Cropper instance
 var cropper = new Cropper(canvas, {
-	viewMode: 1,
+	viewMode: 2,
 	dragMode: "move",
 	toggleDragModeOnDblclick: true,
 	movable: true,
@@ -383,3 +391,8 @@ document.getElementById('aspectRatio11').addEventListener('click', () => {
 document.getElementById('aspectRatioFree').addEventListener('click', () => {
     cropper.setAspectRatio(NaN);
 });
+
+document.getElementById('reset').addEventListener('click', () => {
+    cropper.reset();
+});
+

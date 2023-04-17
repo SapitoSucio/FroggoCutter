@@ -16,12 +16,67 @@ input[type="file"], input[type="checkbox"], select {
   }
   
   #canvas {
-	width: 500px;
-	height: 300px;
+	width: 1200;
+	height: 800px;
+	border-radius: 15px;
   }
   
   #container {
 	max-width: 1200px;
 	height: 800px;
+	border-radius: 15px;
    
   }
+
+  #dark-mode-btn {
+	position: fixed;
+	bottom: 20px;
+	right: 30px;
+	z-index: 9999;
+	padding: 10px 20px;
+	background-color: #424242;
+	border: none;
+	color: #ffffff;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	border-radius: 15px;
+}
+
+#dark-mode-btn:hover {
+	background-color: #333;
+	color: #9bfc8e;
+	transform: scale(1.05);
+}
+
+.btn-text {
+	display: inline-block;
+	transform: scale(1);
+	transform-origin: 0 0;
+	transition: transform 0.3s ease;
+}
+
+#dark-mode-btn:hover .btn-text {
+	transform: scale(1.082);
+	
+	
+}
+
+
+body {
+	background-color: #f2f2f2;
+	color: #212121;
+	transition: background-color 0.5s, color 0.5s;
+}
+
+body.dark-mode {
+	background-color: #212121;
+	color: #f2f2f2;
+}
+
+
+.cropper-modal, .cropper-container, .cropper-wrap-box {
+	
+    border-radius: 30px;
+
+}
+
