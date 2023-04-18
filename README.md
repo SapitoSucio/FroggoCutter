@@ -1,14 +1,11 @@
 # FroggoCutter 🐸
 
-This is a simple site to create your login background, slicing your image into 12 pieces for your ragnarok client. 
+This is a simple website for creating a custom login background for your Ragnarok client. It slices your image into 12 pieces by default and saves the BMP files as 24-bit, which produces good quality images.
 
-By default, it saves the BMP files as 24bit,
-you can also choose to save it as 8bit, also allows you
-to choose the desired algorithm to create the color pallete
-
+Alternatively, you can choose to save the files as 8-bit to save space. When 8Bit is activated you can select the desired algorithm to create the color palette.
 
 Known Issues:
 
-- When you try to slice a big image (>3000px) and 8Bit is selected, the browser may lock itself for a few seconds (❁´◡`❁)
+- When you try to slice a big image (>3000px) and 8Bit is selected, the browser may lock itself for a few seconds (❁´◡\`❁)
 
 https://sapitosucio.github.io/FroggoCutter/
