@@ -4,7 +4,7 @@ This is a simple website for creating a custom login background for your Ragnaro
 
 Alternatively, you can choose to save the files as 8-bit to save space. When 8Bit is activated you can select the desired algorithm to create the color palette.
 
-The BMP files are named with this format `t_¹è°æX-Y.bmp` and are compressed into a zip file for the user to download.
+The BMP files are named with this format `t_¹è°æX-Y.bmp` and the 12 files are compressed into a zip file for the user to download.
 
 Known Issues:
 
