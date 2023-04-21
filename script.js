@@ -1,45 +1,36 @@
+const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+const isDarkMode = darkModeMediaQuery.matches;
+
 const darkModeBtn = document.getElementById('dark-mode-btn');
 const body = document.body;
 
-// Función para crear una cookie
-function setCookie(name, value, days) {
-  let expires = "";
-  if (days) {
-    let date = new Date();
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-    expires = "; expires=" + date.toUTCString();
-  }
-  document.cookie = name + "=" + (value || "") + expires + "; path=/";
-}
-
-// Función para obtener el valor de una cookie
-function getCookie(name) {
-  let nameEQ = name + "=";
-  let ca = document.cookie.split(';');
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) == ' ') c = c.substring(1, c.length);
-    if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
-  }
-  return null;
-}
-
-// Verificar si la cookie existe y si es "true", activar el modo oscuro
-if (getCookie('darkModeEnabled') === 'true') {
+if (isDarkMode) {
   body.classList.add('dark-mode');
+  darkModeBtn.textContent = 'White Mode';
+} else {
+  body.classList.remove('dark-mode');
+  darkModeBtn.textContent = 'Dark Mode';
 }
+
+const handleDarkModeChange = (e) => {
+  const isDarkMode = e.matches;
+  if (isDarkMode) {
+    body.classList.add('dark-mode');
+  } else {
+    body.classList.remove('dark-mode');
+  }
+};
+
+darkModeMediaQuery.addEventListener('change', handleDarkModeChange);
 
 darkModeBtn.addEventListener('click', () => {
   body.classList.toggle('dark-mode');
   if (body.classList.contains('dark-mode')) {
-    // Si se activa el modo oscuro, se crea una cookie con el valor "true" que expira en 30 días
-    setCookie('darkModeEnabled', 'true', 30);
+    darkModeBtn.textContent = 'White Mode';
   } else {
-    // Si se desactiva el modo oscuro, se elimina la cookie
-    setCookie('darkModeEnabled', '', -1);
+    darkModeBtn.textContent = 'Dark Mode';
   }
 });
-
 
 let checkbox8Bit = document.getElementById("8Bit");
 let selectPaletteMethod = document.getElementById("paletteMethod");
