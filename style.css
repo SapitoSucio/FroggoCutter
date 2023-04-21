@@ -1,33 +1,32 @@
 input[type="file"],
 input[type="checkbox"],
 select {
-  padding: 10px;
-  margin: 5px;
+  padding: 0.8em;
+  margin: 0.8em;
   transition: all 0.3s ease;
   background-color: #F5F5F5;
   border: none;
   color: #333;
-  font-size: 16px;
-  border-radius: 5px;
+  font-size: 0.9em;
+  border-radius: 0.5em;
 }
 
 input[type="file"]:hover,
 select:hover {
-  padding: 6px;
-  margin: 10px;
+  padding: 0.6em;
+  margin: 1em;
   background-color: #E0E0E0;
 }
-
 #canvas {
   width: 800px;
-  height: 740px;
+  height: 720px;
   margin: 0 auto; /* Centrar el lienzo horizontalmente */
   display: block;
 }
 
 #container {
   max-width: 1100px;
-  height: 740px;
+  height: 720px;
   border-radius: 15px;
   margin: 0 auto; /* Centrar el contenedor horizontalmente */
   display: flex;
@@ -81,7 +80,7 @@ body.dark-mode {
 .button-group {
   display: flex;
   justify-content: center;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .button-group input,button {
@@ -110,6 +109,10 @@ body.dark-mode {
   transform: scale(1);
 }
 
+#cropButton {
+	margin-top: 22px;
+}
+
 /* Agregar pseudo-elemento ::before */
 #cropButton::before {
 	content: url('https://i.imgur.com/IwUzsCd.png');
@@ -118,15 +121,9 @@ body.dark-mode {
 	left: 50%;
 	transform: translateX(-50%);
 	opacity: 0;
-	transition: all 0.3s ease;
-	background-image: url('https://i.imgur.com/IwUzsCd.png');
-	background-size: contain;
-	background-repeat: no-repeat;
-	width: 20px;
-	height: 20px;
-  }
+	transition: all 0.3s ease-in-out;
 
-  
+  }
   
   #cropButton:hover::before {
 	top: -20px;
