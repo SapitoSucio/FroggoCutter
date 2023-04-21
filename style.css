@@ -93,6 +93,7 @@ body.dark-mode {
   cursor: pointer;
   transition: all 0.3s ease;
   border-radius: 15px;
+  position: relative; /* Agregar posición relativa para que la imagen se muestre encima */
 }
 
 .button-group input:hover,button:hover {
@@ -101,11 +102,31 @@ body.dark-mode {
   transform: scale(1.05);
 }
 
+
+
 .button-group input.active,button.active {
   background-color: #9bfc8e;
   color: #333;
   transform: scale(1);
 }
+
+/* Agregar pseudo-elemento ::before */
+#cropButton::before {
+	content: url("https://i.imgur.com/Ub0iUMY.png");
+	width: 100%;
+  }
+
+
+#cropButton:after {
+    display: inline-block; overflow: hidden; outline: 2px solid red;
+    content: url('https://i.imgur.com/Ub0iUMY.png');
+    height: 62px; width: 250px;
+}
+  
+  #cropButton:hover::before {
+	content: url("https://i.imgur.com/Ub0iUMY.png");
+	width: 100%;
+  }
 
 .cropper-modal, .cropper-container, .cropper-wrap-box {
 	
