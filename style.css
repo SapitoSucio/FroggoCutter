@@ -112,3 +112,14 @@ body.dark-mode {
     border-radius: 30px;
 
 }
+
+.cropper-point {
+    background-color: #60ed20!important;
+    height: 7px!important;
+    opacity: 0.75;
+    width: 7px!important;
+}
+
+.cropper-line {
+    background-color: rgb(179, 255, 0)!important;
+}
