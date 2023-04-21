@@ -25,7 +25,7 @@ const ctx = canvas.getContext('2d');
 const cropButton = document.getElementById('cropButton');
 // Create a new Cropper instance
 var cropper = new Cropper(canvas, {
-	viewMode: 2,
+	viewMode: 1,
 	dragMode: "move",
 	toggleDragModeOnDblclick: true,
 	movable: true,
@@ -82,6 +82,7 @@ function addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight) {
       }
   }
 }
+
 function loadImage(src) {
   return new Promise((resolve) => {
     const img = new Image();

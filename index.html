@@ -7,6 +7,7 @@
 <link href="https://unpkg.com/cropperjs/dist/cropper.css" rel="stylesheet">
 <link href="style.css" rel="stylesheet">
 <script src="https://unpkg.com/cropperjs/dist/cropper.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/cropperjs/dist/cropper.css">
 
 </head>
 <body>
@@ -22,18 +23,20 @@
     <option value="popularityQuantization">popularityQuantization</option>
 </select>
 <div id="container">
-<canvas id="canvas"></canvas>
-
+	<canvas id="canvas"></canvas>
 </div>
-<input type="button" id="aspectRatio169" value="16:9">
-<input type="button" id="aspectRatio43" value="4:3">
-<input type="button" id="aspectRatio11" value="1:1">
-<input type="button" id="aspectRatioFree" value="Free">
-<input type="button" id="reset" value="Reset">
 
 
-
-<button id="cropButton">crop and download</button>
+<div class="button-group">
+	<input type="button" class="button-group" id="aspectRatio169" value="16:9">
+	<input type="button" id="aspectRatio43" value="4:3">
+	<input type="button" id="aspectRatio11" value="1:1">
+	<input type="button" id="aspectRatioFree" value="Free">
+	<input type="button" id="reset" value="Reset">
+</div>
+<div class="button-group">
+	<button id="cropButton">crop and download</button>
+</div>
 
 
 
