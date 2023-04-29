@@ -1,3 +1,11 @@
+/* Ensure the size of the image fit the container perfectly */
+img {
+	display: block;
+  
+	/* This rule is very important, please don't ignore this */
+	max-width: 100%;
+  }
+
 input[type="file"],
 input[type="checkbox"],
 select {
@@ -18,21 +26,39 @@ select:hover {
   background-color: #E0E0E0;
 }
 #canvas {
-  width: 800px;
-  height: 45em;
-  margin: 0 auto; /* Centrar el lienzo horizontalmente */
-  display: block;
+	width: 100%;
+	height: auto;
+	min-height: 45em;
+	max-height: 60em;
+	display: block;
+  }
+
+.cropper-container {
+box-shadow: 0 0 10px #00000080; /* Agrega sombra al canvas */
+transition: box-shadow 0.3s ease; /* Agrega efecto de transición suave */
 }
 
-#container {
-  max-width: 800px;
-  height: 45em;
-  border-radius: 15px;
-  margin: 0 auto; /* Centrar el contenedor horizontalmente */
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+.cropper-container:hover {
+box-shadow: 0 0 15px #000000cc; /* Cambia la sombra al pasar el cursor sobre el canvas */
 }
+  
+  #container {
+	max-width: 800px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+  }
+  
+  @media screen and (max-width: 800px) {
+	#canvas {
+	  height: 38em;
+	}
+	#container {
+	  height: 38em;
+	}
+  }
+  
 
 #dark-mode-btn {
   position: fixed;
@@ -118,11 +144,11 @@ body.dark-mode {
 #cropButton::before {
 	content: url('https://i.imgur.com/IwUzsCd.png');
 	position: absolute;
-	top: -15px;
+	top: -18px;
 	left: 50%;
 	transform: translateX(-50%);
 	opacity: 0;
-	transition: all 0.3s ease-in-out;
+	transition: all 0.2s ease-in-out;
 
   }
   
@@ -133,7 +159,7 @@ body.dark-mode {
 
 .cropper-modal, .cropper-container, .cropper-wrap-box {
 	
-    border-radius: 30px;
+    border-radius: 12px;
 
 }
 
