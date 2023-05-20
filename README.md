@@ -18,5 +18,6 @@ Check it out at https://sapitosucio.github.io/FroggoCutter/ 🫡
 
 Known Issues:
 
-If you try to slice a big image (>3000px) and 8Bit is selected, your browser might lock itself for a few seconds (❁´◡`❁). So just be patient, all righty?
+If you try to slice a big image (>3000px) and 8Bit is selected, your browser might lock itself for a few seconds (❁\´◡\`❁).
+So just be patient, all righty?
 
