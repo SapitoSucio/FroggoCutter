@@ -8,13 +8,11 @@ With FroggoCutter, you can easily slice your image into 12 pieces and save them 
 
 ### So Basically
 
-- The BMP files are named in a specific format, so you don't have to worry about organizing them yourself.
+- The BMP files are named in a specific format, so you don't have to worry about renaming them yourself.
 - The 12 files are compressed into a zip file for easy downloading.
-- It's super simple to use, even if you're not a tech-savvy person.
-- If you wanna save some good MBs you can  choose to use the 8-bit option.
+- If you wanna save some MBs you can choose to use the 8-bit option.
 
 Check it out at https://sapitosucio.github.io/FroggoCutter/ 🫡
-
 
 ### To Do
 
