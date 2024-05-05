@@ -12,6 +12,23 @@ if (isDarkMode) {
   darkModeBtn.textContent = 'Dark Mode';
 }
 
+const outputFormatSelect = document.getElementById('outputFormat');
+const bitContainer = document.getElementById('BitContainer');
+
+function handleOutputFormatChange() {
+  const isTLoginFormat = outputFormatSelect.value === 't_login';
+
+  // Ocultar o mostrar el contenedor del checkbox8Bit y selectPaletteMethod
+  bitContainer.style.display = isTLoginFormat ? 'none' : 'unset';
+  selectPaletteMethod.style.display = isTLoginFormat ? 'none' : 'unset';
+
+  // Deshabilitar o habilitar el selectPaletteMethod según el estado del checkbox8Bit
+  if (!isTLoginFormat) {
+    selectPaletteMethod.disabled = !checkbox8Bit.checked;
+  }
+}
+
+outputFormatSelect.addEventListener('change', handleOutputFormatChange);
 const handleDarkModeChange = (e) => {
   const isDarkMode = e.matches;
   if (isDarkMode) {
@@ -69,7 +86,16 @@ imageInput.addEventListener('change', async (e) => {
 });
 
 cropButton.addEventListener('click', () => {
-    cropper.getCroppedCanvas().toBlob((blob) => {
+    const outputFormat = outputFormatSelect.value;
+  
+    if (outputFormat === 't_login') {
+      // Crear una única imagen en formato .jpg
+      cropper.getCroppedCanvas().toBlob((blob) => {
+        saveAs(blob, 't_login.jpg');
+    }, 'image/jpeg');
+    } else {
+      // El código actual para generar el archivo .zip con imágenes BMP
+      cropper.getCroppedCanvas().toBlob((blob) => {
         const zip = new JSZip();
         const numRows = 3;
         const numCols = 4;
@@ -84,10 +110,11 @@ cropButton.addEventListener('click', () => {
         ctx.drawImage(cropper.getCroppedCanvas(), 0, 0, totalWidth, totalHeight);
         addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight);
         zip.generateAsync({type: 'blob'}).then((content) => {
-            saveAs(content, 'squares.zip');
+          saveAs(content, 'squares.zip');
         });
-    });
-});
+      });
+    }
+  });
 
 function drawImageOnCanvas(img) {
   canvas.width = img.width;

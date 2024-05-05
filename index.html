@@ -4,7 +4,6 @@
     <title>FroggoCutter</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<link href="https://unpkg.com/cropperjs/dist/cropper.css" rel="stylesheet">
 <link href="style.css" rel="stylesheet">
 <script src="https://unpkg.com/cropperjs/dist/cropper.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/cropperjs/dist/cropper.css">
@@ -14,15 +13,20 @@
 	<button id="dark-mode-btn">
 		<span class="btn-text">Dark Mode</span>
 	</button>
-
-<input type="file" id="imageInput" accept="image/*">
-<input type="checkbox" id="8Bit">8Bit
-<select id="paletteMethod" disabled>
-    <option value="medianCut">medianCut</option>
-    <option value="kmeans">kmeans</option>
-    <option value="popularityQuantization">popularityQuantization</option>
+<select id="outputFormat">
+	<option value="t_login">t_login</option>
+	<option value="bmp">BMP</option>
 </select>
-<div id="container">
+<input type="file" id="imageInput" accept="image/*">
+<div id="BitContainer">
+    <input type="checkbox" id="8Bit">8Bit
+	<select id="paletteMethod" disabled>
+		<option value="medianCut">medianCut</option>
+		<option value="kmeans">kmeans</option>
+		<option value="popularityQuantization">popularityQuantization</option>
+	</select>
+</div>
+<div id="container" style="max-height: 77vh;">
 	<canvas id="canvas"></canvas>
 </div>
 
@@ -37,8 +41,6 @@
 <div class="button-group">
 	<button id="cropButton">Crop & Download</button>
 </div>
-
-
 
 </body>
 <script src="script.js"></script>

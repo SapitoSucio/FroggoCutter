@@ -6,6 +6,10 @@ img {
 	max-width: 100%;
   }
 
+#BitContainer{
+  display: none;
+}
+
 input[type="file"],
 input[type="checkbox"],
 select {
