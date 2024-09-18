@@ -2,46 +2,74 @@
 <html>
 <head>
     <title>FroggoCutter</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<link href="style.css" rel="stylesheet">
-<script src="https://unpkg.com/cropperjs/dist/cropper.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/cropperjs/dist/cropper.css">
-
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link href="style.css" rel="stylesheet">
+    <script src="https://unpkg.com/cropperjs/dist/cropper.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/cropperjs/dist/cropper.css">
+    <style>
+        #dropZone {
+            border: 2px dashed #ccc;
+            border-radius: 20px;
+            width: 80vw;
+            height: 70vh;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+            color: #888;
+            cursor: pointer;
+        }
+        #dropZone.hide {
+            display: none;
+        }
+        #container {
+            display: none;
+        }
+        #container.show {
+            display: block;
+        }
+    </style>
 </head>
 <body>
-	<button id="dark-mode-btn">
-		<span class="btn-text">Dark Mode</span>
-	</button>
-<select id="outputFormat">
-	<option value="t_login">t_login</option>
-	<option value="bmp">BMP</option>
-</select>
-<input type="file" id="imageInput" accept="image/*">
-<div id="BitContainer">
-    <input type="checkbox" id="8Bit">8Bit
-	<select id="paletteMethod" disabled>
-		<option value="medianCut">medianCut</option>
-		<option value="kmeans">kmeans</option>
-		<option value="popularityQuantization">popularityQuantization</option>
-	</select>
-</div>
-<div id="container" style="max-height: 77vh;">
-	<canvas id="canvas"></canvas>
-</div>
+    <button id="dark-mode-btn">
+        <span class="btn-text">Dark Mode</span>
+    </button>
+    <select id="outputFormat">
+        <option value="t_login">t_login</option>
+        <option value="bmp">BMP</option>
+    </select>
+    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+    <div id="BitContainer">
+        <input type="checkbox" id="8Bit">8Bit
+        <select id="paletteMethod" disabled>
+            <option value="medianCut">medianCut</option>
+            <option value="kmeans">kmeans</option>
+            <option value="popularityQuantization">popularityQuantization</option>
+        </select>
+    </div>
+    <div id="dropZone">
+        Click here or drag and drop an image
+    </div>
+    <div id="container" style="max-height: 77vh;">
+        <canvas id="canvas"></canvas>
+    </div>
 
-
-<div class="button-group">
-	<input type="button" class="button-group" id="aspectRatio169" value="16:9">
-	<input type="button" id="aspectRatio43" value="4:3">
-	<input type="button" id="aspectRatio11" value="1:1">
-	<input type="button" id="aspectRatioFree" value="Free">
-	<input type="button" id="reset" value="Reset">
-</div>
-<div class="button-group">
-	<button id="cropButton">Crop & Download</button>
-</div>
+    <div class="button-group">
+        <input type="button" class="button-group" id="aspectRatio169" value="16:9">
+        <input type="button" id="aspectRatio43" value="4:3">
+        <input type="button" id="aspectRatio11" value="1:1">
+        <input type="button" id="aspectRatioFree" value="Free">
+        <input type="button" id="reset" value="Reset">
+    </div>
+    <div class="button-group">
+        <button id="cropButton">Crop & Download</button>
+    </div>
 
 </body>
 <script src="script.js"></script>
+<script>
+    
+</script>
 </html>

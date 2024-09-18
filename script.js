@@ -18,7 +18,7 @@ const bitContainer = document.getElementById('BitContainer');
 function handleOutputFormatChange() {
   const isTLoginFormat = outputFormatSelect.value === 't_login';
 
-  // Ocultar o mostrar el contenedor del checkbox8Bit y selectPaletteMethod
+  // Ocultar  o mostrar el contenedor del checkbox8Bit y selectPaletteMethod
   bitContainer.style.display = isTLoginFormat ? 'none' : 'unset';
   selectPaletteMethod.style.display = isTLoginFormat ? 'none' : 'unset';
 
@@ -63,6 +63,8 @@ checkbox8Bit.addEventListener("change", function() {
 const imageInput = document.getElementById('imageInput');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const dropZone = document.getElementById('dropZone');
+const container = document.getElementById('container');
 
 const cropButton = document.getElementById('cropButton');
 // Create a new Cropper instance
@@ -449,3 +451,56 @@ document.getElementById('reset').addEventListener('click', () => {
     cropper.reset();
 });
 
+// Drag and Drop Functionality
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('highlight');
+});
+
+dropZone.addEventListener('dragleave', () => {
+  dropZone.classList.remove('highlight');
+});
+
+dropZone.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('highlight');
+
+  if (e.dataTransfer.files.length > 0) {
+    const file = e.dataTransfer.files[0];
+    if (file.type.startsWith('image/')) {
+      await handleImageLoad(file);
+    }
+  }
+});
+
+dropZone.addEventListener('click', () => {
+  imageInput.click();
+});
+
+
+imageInput.addEventListener('change', async (e) => {
+  if (e.target.files.length > 0) {
+    const file = e.target.files[0];
+    await handleImageLoad(file);
+  }
+});
+
+// Función para manejar la carga de la imagen (tanto desde drag and drop como desde input)
+async function handleImageLoad(file) {
+  if (!file.type.startsWith('image/')) {
+    alert("Por favor, selecciona un archivo de imagen.");
+    return;
+  }
+
+  try {
+    const imgUrl = URL.createObjectURL(file);
+    const img = await loadImage(imgUrl); 
+    cropper.replace(imgUrl);
+
+    dropZone.classList.add('hide');
+    container.classList.add('show');
+  } catch (error) {
+    console.error("Error al cargar la imagen:", error);
+    alert("Hubo un error al cargar la imagen. Por favor, inténtalo de nuevo.");
+  }
+}
