@@ -7,10 +7,10 @@
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?">
     <link rel="manifest" href="site.webmanifest">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link href="style.css" rel="stylesheet">
-    <script src="https://unpkg.com/cropperjs/dist/cropper.js"></script>
+    <script defer src="https://unpkg.com/cropperjs/dist/cropper.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/cropperjs/dist/cropper.css">
     <style>
         #dropZone {
@@ -36,6 +36,7 @@
             display: block;
         }
     </style>
+    <script type="module" src="script.js"></script>
 </head>
 <body>
     <button id="dark-mode-btn">
@@ -73,8 +74,6 @@
     </div>
 
 </body>
-<script src="script.js"></script>
-<script>
-    
-</script>
+
+
 </html>
