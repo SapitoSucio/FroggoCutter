@@ -110,9 +110,7 @@ body {
   display: block;
 }
 
-.cropper-wrap-box, .cropper-drag-box, .cropper-move, .cropper-modal{
-  border-radius: 30px;
-}
+
 
 @media screen and (max-width: 800px) {
   #canvas, #container {

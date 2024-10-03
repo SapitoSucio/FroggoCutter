@@ -504,3 +504,16 @@ async function handleImageLoad(file) {
     alert("Hubo un error al cargar la imagen. Por favor, inténtalo de nuevo.");
   }
 }
+
+document.addEventListener('paste', async (event) => {
+  const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+  
+  for (const item of items) {
+    if (item.type.indexOf('image') === 0) {
+      event.preventDefault();
+      const blob = item.getAsFile();
+      await handleImageLoad(blob);
+      break;
+    }
+  }
+});
