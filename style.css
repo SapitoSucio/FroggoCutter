@@ -66,10 +66,6 @@ body.dark-mode select option {
 }
 
 
-body {
-  transition: background-color 0.5s, color 0.5s;
-}
-
 
 @media screen and (max-width: 800px) {
   #canvas, #container {
@@ -77,22 +73,6 @@ body {
   }
 }
 
-
-/* Crop button special effect */
-#cropButton::before {
-  content: url('https://images.weserv.nl/?url=https://i.imgur.com/IwUzsCd.png?v=4&default=https://i.imgur.com/IwUzsCd.png&maxage=7d&l=9');
-  position: absolute;
-  top: -18px;
-  left: 50%;
-  transform: translateX(-50%);
-  opacity: 0;
-  transition: all 0.2s ease-in-out;
-}
-
-#cropButton:hover::before {
-  top: -20px;
-  opacity: 1;
-}
 
 /* Layout styles */
 #dropZone.hide {
@@ -110,13 +90,6 @@ body {
   display: block;
 }
 
-
-
-@media screen and (max-width: 800px) {
-  #canvas, #container {
-      height: 38em;
-  }
-}
 /* Agregar border radius al contenedor principal del cropper */
 .cropper-container,
 .cropper-wrap-box,
@@ -125,3 +98,4 @@ body {
   border-radius: 12px;
   overflow: hidden;
 }
+
