@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html class="h-full">
 <head>
     <title>FroggoCutter 🐸⚔️</title>
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -9,71 +9,62 @@
     <link rel="manifest" href="site.webmanifest">
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <link href="style.css" rel="stylesheet">
     <script defer src="https://unpkg.com/cropperjs/dist/cropper.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/cropperjs/dist/cropper.css">
-    <style>
-        #dropZone {
-            border: 2px dashed #ccc;
-            border-radius: 20px;
-            width: 80vw;
-            height: 70vh;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2em;
-            color: #888;
-            cursor: pointer;
-        }
-        #dropZone.hide {
-            display: none;
-        }
-        #container {
-            display: none;
-        }
-        #container.show {
-            display: block;
-        }
-    </style>
     <script type="module" src="script.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/cropperjs/dist/cropper.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <button id="dark-mode-btn">
+<body class="h-full flex flex-col min-h-screen bg-gray-100 text-gray-900">
+    <div class="container mx-auto px-4 rounded-lg py-8">
+        <div class="flex flex-wrap gap-4 justify-center items-center mb-6">
+            <select id="outputFormat" class=" rounded-2xl border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300">
+                <option value="t_login">t_login</option>
+                <option value="bmp">BMP</option>
+            </select>
+            
+            <div id="BitContainer" class="hidden items-center gap-2">
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" id="8Bit" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                    <span>8Bit</span>
+                </label>
+                <select id="paletteMethod" disabled class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300">
+                    <option value="medianCut">medianCut</option>
+                    <option value="kmeans">kmeans</option>
+                    <option value="popularityQuantization">popularityQuantization</option>
+                </select>
+            </div>
+        </div>
+
+        <input type="file" id="imageInput" accept="image/*" class="hidden">
+        
+        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-2xl w-4/5 h-[70vh] mx-auto flex items-center justify-center text-lg text-gray-500 cursor-pointer hover:border-green-500 transition-colors duration-300">
+            Click here or drag and drop an image
+        </div>
+
+        <div id="container" class="max-h-[77vh] hidden mx-auto max-w-4xl">
+            <canvas id="canvas" class="rounded-2xl"></canvas>
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-4 mt-6">
+            <button id="aspectRatio169" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300" title="Best aspect ratio for Ragnarok clients in fullscreen">16:9</button>
+            <button id="aspectRatio43" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">4:3</button>
+            <button id="aspectRatio11" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">1:1</button>
+            <button id="aspectRatioFree" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Free</button>
+            <button id="reset" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Reset</button>
+        </div>
+
+        <div class="flex justify-center mt-6">
+            <button id="cropButton" class="relative px-6 py-3 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">
+                Crop & Download
+            </button>
+        </div>
+    </div>
+
+    <button id="dark-mode-btn" class="fixed bottom-5 right-8 px-5 py-2.5 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-all duration-300 transform hover:scale-105 z-50">
         <span class="btn-text">Dark Mode</span>
     </button>
-    <select id="outputFormat">
-        <option value="t_login">t_login</option>
-        <option value="bmp">BMP</option>
-    </select>
-    <input type="file" id="imageInput" accept="image/*" style="display: none;">
-    <div id="BitContainer">
-        <input type="checkbox" id="8Bit">8Bit
-        <select id="paletteMethod" disabled>
-            <option value="medianCut">medianCut</option>
-            <option value="kmeans">kmeans</option>
-            <option value="popularityQuantization">popularityQuantization</option>
-        </select>
-    </div>
-    <div id="dropZone">
-        Click here or drag and drop an image
-    </div>
-    <div id="container" style="max-height: 77vh;">
-        <canvas id="canvas"></canvas>
-    </div>
 
-    <div class="button-group">
-        <input type="button" class="button-group" id="aspectRatio169" value="16:9">
-        <input type="button" id="aspectRatio43" value="4:3">
-        <input type="button" id="aspectRatio11" value="1:1">
-        <input type="button" id="aspectRatioFree" value="Free">
-        <input type="button" id="reset" value="Reset">
-    </div>
-    <div class="button-group">
-        <button id="cropButton">Crop & Download</button>
-    </div>
-
+    
 </body>
-
-
 </html>
