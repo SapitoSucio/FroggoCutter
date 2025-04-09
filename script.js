@@ -105,8 +105,6 @@ function loadImageAndDraw(src) {
             // Guardar las dimensiones originales
             originalImageWidth = img.naturalWidth;
             originalImageHeight = img.naturalHeight;
-            console.log(`Imagen cargada con dimensiones: ${originalImageWidth}x${originalImageHeight}`);
-
             // Dibujar la imagen escalada en el canvas
             drawImageOnCanvas(img);
 
@@ -114,7 +112,6 @@ function loadImageAndDraw(src) {
             resolve(img); // Se puede resolver con la imagen si es necesario después
         };
         img.onerror = (err) => { // Manejar errores de carga de imagen
-            console.error("Error al cargar la fuente de la imagen:", err);
             reject(new Error("No se pudo cargar la imagen desde la fuente proporcionada."));
         };
         img.src = src;
@@ -153,14 +150,11 @@ function drawImageOnCanvas(img) {
 
 async function handleImageLoad(file) {
     if (!file.type.startsWith('image/')) {
-        alert("Por favor, selecciona un archivo de imagen.");
         return;
     }
 
     // Guarda el blob/archivo original
     originalImageBlob = file;
-    console.log("Blob/archivo original almacenado:", originalImageBlob);
-
     // --- Iniciar transición visual INMEDIATAMENTE ---
     // 1. Agregar clase para desvanecer el dropZone
     dropZone.classList.add('fade-out');
@@ -195,7 +189,6 @@ async function handleImageLoad(file) {
              if (cropper) {
                  cropper.destroy();
                  cropper = null; // Asegurar que se limpia la referencia
-                 console.log("Cropper anterior destruido.");
              }
         }
 
@@ -203,7 +196,6 @@ async function handleImageLoad(file) {
 
         // Esperar a que la imagen se cargue y se dibuje en el canvas
         await loadImageAndDraw(imgUrl); // Usa la nueva función
-        console.log("Imagen dibujada en el canvas.");
 
         // --- Inicializar Cropper DESPUÉS de dibujar ---
         cropper = new Cropper(canvas, {
@@ -219,7 +211,6 @@ async function handleImageLoad(file) {
             cropBoxResizable: true,
             toggleDragModeOnDblclick: true,
             ready: function () { // Usar el evento ready oficial de Cropper.js
-                console.log("Cropper ready event fired.");
                 // Crear y añadir canvas para guías personalizadas AQUÍ
                 // Asegurarse de que solo se cree una vez
                 if (!document.getElementById('guideCanvas')) {
@@ -237,26 +228,19 @@ async function handleImageLoad(file) {
                         guideCanvas.style.zIndex = '10';
                         guideCanvas.style.pointerEvents = 'none'; // Ignorar clics/eventos de ratón
                         cropperContainer.appendChild(guideCanvas);
-                        console.log("Guide canvas añadido.");
 
                         // Dibujar guías iniciales ahora que el cropper está listo
                         drawCustomGuides();
 
                         // Añadir listener para redibujar en cambios futuros (drag, resize)
                         canvas.addEventListener('crop', drawCustomGuides);
-                         console.log("Listeners de guías ('crop') añadidos.");
 
-                    } else {
-                        console.error("No se encontró '.cropper-container' para añadir las guías.");
                     }
                 }
             } // Fin del 'ready' callback
         });
-        console.log("Nueva instancia de Cropper creada.");
 
     } catch (error) {
-        console.error("Error durante la carga/procesamiento de la imagen:", error);
-        alert(`Hubo un error: ${error.message || "Por favor, inténtalo de nuevo."}`);
         resetUI();
     }
 }
@@ -266,7 +250,6 @@ cropButton.addEventListener('click', async () => {
     const outputFormat = outputFormatSelect.value;
 
     if (!cropper) {
-        alert("Por favor, carga una imagen primero.");
         return;
     }
 
@@ -280,35 +263,25 @@ cropButton.addEventListener('click', async () => {
     const startsNearOrigin = Math.abs(preciseCropData.x) < tolerance && Math.abs(preciseCropData.y) < tolerance;
     const isFullSelection = coversDisplayedWidth && coversDisplayedHeight && startsNearOrigin;
 
-    console.log(`Dimensiones originales: ${originalImageWidth}x${originalImageHeight}`);
-    console.log(`Dimensiones naturales (cropper): ${imageData.naturalWidth}x${imageData.naturalHeight}`);
-    console.log(`Datos precisos recorte: x=${preciseCropData.x.toFixed(2)}, y=${preciseCropData.y.toFixed(2)}, width=${preciseCropData.width.toFixed(2)}, height=${preciseCropData.height.toFixed(2)}`);
-    console.log(`¿Es selección completa? ${isFullSelection}`);
-
     // --- Lógica de Salida ---
 
     if (outputFormat === 't_login') {
         // --- Salida T_LOGIN (JPEG) ---
         if (isFullSelection && originalImageBlob) {
             // Selección completa Y tenemos el blob original: Guardar el original directamente
-            console.log("Guardando blob original directamente como t_login.jpg");
             try {
                 saveAs(originalImageBlob, 't_login.jpg');
             } catch (error) {
-                console.error("Error al guardar el blob original:", error);
-                alert("Hubo un problema al guardar el archivo original. Intentando método alternativo.");
                 // Fallback a método de canvas si saveAs falla con el blob original
                 generateJpegFromCanvas(imageData, preciseCropData, isFullSelection);
             }
         } else {
             // Recorte parcial O no tenemos blob original: Generar desde canvas
-             console.log("Generando t_login.jpg desde el canvas (recorte parcial o fallback)");
             generateJpegFromCanvas(imageData, preciseCropData, isFullSelection);
         }
 
     } else {
         // --- Salida BMP --- (Siempre se genera desde canvas)
-        console.log("Generando salida BMP desde el canvas.");
         generateBmpFromCanvas(imageData, preciseCropData, isFullSelection);
     }
 });
@@ -320,7 +293,6 @@ async function generateJpegFromCanvas(imageData, preciseCropData, isFullSelectio
 
     if (isFullSelection) {
         // Recrea el canvas con dimensiones originales si es selección completa (fallback)
-        console.log("Fallback: Creando canvas con dimensiones originales para JPEG");
         finalCanvas = await createFullCanvasFromCropperSource(); // Usamos función auxiliar
         if (!finalCanvas) return; // Salir si falla la creación
     } else {
@@ -330,27 +302,20 @@ async function generateJpegFromCanvas(imageData, preciseCropData, isFullSelectio
         const finalWidth = Math.round(preciseCropData.width * scaleX);
         const finalHeight = Math.round(preciseCropData.height * scaleY);
 
-        console.log(`Calculadas dimensiones recorte JPEG: ${finalWidth}x${finalHeight}`);
         const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: false };
         finalCanvas = cropper.getCroppedCanvas(cropOptions);
-        console.log(`Dimensiones canvas recortado JPEG: ${finalCanvas.width}x${finalCanvas.height}`);
         if (Math.abs(finalCanvas.width - finalWidth) > 1 || Math.abs(finalCanvas.height - finalHeight) > 1) {
              console.warn(`Dimensiones del canvas recortado difieren ligeramente de las calculadas.`);
         }
     }
 
     if (!finalCanvas) {
-        console.error("Error: No se generó el canvas final para JPEG.");
-        alert("Error procesando la imagen para JPEG.");
         return;
     }
 
     finalCanvas.toBlob((blob) => {
         if (blob) {
             saveAs(blob, 't_login.jpg');
-        } else {
-            console.error("Fallo al generar blob para JPEG desde canvas.");
-            alert("Error guardando imagen como JPEG.");
         }
     }, 'image/jpeg', 1.0);
 }
@@ -360,7 +325,6 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
 
     if (isFullSelection) {
         // Recrea el canvas con dimensiones originales si es selección completa
-        console.log("Creando canvas con dimensiones originales para BMP");
         finalCanvas = await createFullCanvasFromCropperSource();
         if (!finalCanvas) return;
     } else {
@@ -370,26 +334,20 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
         const finalWidth = Math.round(preciseCropData.width * scaleX);
         const finalHeight = Math.round(preciseCropData.height * scaleY);
 
-        console.log(`Calculadas dimensiones recorte BMP: ${finalWidth}x${finalHeight}`);
         const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: false };
         finalCanvas = cropper.getCroppedCanvas(cropOptions);
-        console.log(`Dimensiones canvas recortado BMP: ${finalCanvas.width}x${finalCanvas.height}`);
          if (Math.abs(finalCanvas.width - finalWidth) > 1 || Math.abs(finalCanvas.height - finalHeight) > 1) {
              console.warn(`Dimensiones del canvas recortado difieren ligeramente de las calculadas.`);
         }
     }
 
      if (!finalCanvas) {
-        console.error("Error: No se generó el canvas final para BMP.");
-        alert("Error procesando la imagen para BMP.");
         return;
     }
 
     // Lógica existente para procesar BMP desde finalCanvas
     finalCanvas.toBlob((blob) => { // No especificar tipo aquí, imageDataToBMP lo hace
          if (!blob) {
-             console.error("Fallo al generar blob para procesamiento BMP.");
-             alert("Error procesando imagen para formato BMP.");
              return;
          }
          const zip = new JSZip();
@@ -399,8 +357,6 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
          const maxHeight = finalCanvas.height;
 
          if (maxWidth < numCols || maxHeight < numRows) {
-              console.error(`Imagen muy pequeña (${maxWidth}x${maxHeight}) para dividir en ${numCols}x${numRows} secciones.`);
-              alert(`Imagen muy pequeña (${maxWidth}x${maxHeight}) para dividir en ${numCols}x${numRows} secciones.`);
               return;
          }
 
@@ -408,8 +364,6 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
          const sectionHeight = Math.floor(maxHeight / numRows);
 
          if (sectionWidth <= 0 || sectionHeight <= 0) {
-              console.error(`Dimensiones de sección inválidas: ${sectionWidth}x${sectionHeight}`);
-              alert("Error calculando tamaño de secciones BMP.");
               return;
          }
 
@@ -428,8 +382,6 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
          zip.generateAsync({ type: 'blob' }).then((content) => {
              saveAs(content, 'squares.zip');
          }).catch(err => {
-             console.error("Error generando archivo zip:", err);
-             alert("Error creando el archivo zip.");
          });
      });
 }
@@ -437,8 +389,6 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
 // Función auxiliar para crear el canvas de tamaño completo (usada en fallbacks y BMP)
 async function createFullCanvasFromCropperSource() {
     if (!cropper || !cropper.url) {
-         console.error("No se puede crear canvas completo: cropper no inicializado o sin URL.");
-         alert("Error interno: No se encontró la fuente de la imagen.");
          return null;
     }
 
@@ -458,11 +408,8 @@ async function createFullCanvasFromCropperSource() {
             img.src = cropper.url;
         });
         finalCtx.drawImage(img, 0, 0, originalImageWidth, originalImageHeight);
-        console.log(`Canvas completo creado: ${finalCanvas.width}x${finalCanvas.height}`);
         return finalCanvas;
     } catch (error) {
-        console.error("Error cargando imagen original para canvas completo:", error);
-        alert("Error procesando la imagen completa. Intenta recortar una sección más pequeña.");
         return null;
     }
 }
@@ -483,8 +430,6 @@ function addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight, sourc
                 const bmpData = imageDataToBMP(imageData);
                 zip.file(`t_¹è°æ${j+1}-${i+1}.bmp`, bmpData);
             } catch (error) {
-                console.error(`Error processing section ${j+1}-${i+1}:`, error);
-                // Optionally skip this section or stop the whole process
             }
         }
     }
@@ -906,7 +851,6 @@ function resetUI() {
     // Remover listener de guías ANTES de destruir el cropper
     // Asegurarse que el listener se añadió al elemento correcto ('canvas')
     canvas.removeEventListener('crop', drawCustomGuides);
-    console.log("Listeners de guías ('crop') removidos.");
 
     // Revocar URL de objeto antes de destruir
     if (cropper.url) {
@@ -921,12 +865,10 @@ function resetUI() {
   if (existingGuideCanvas) {
     existingGuideCanvas.remove();
     guideCanvas = null; // Resetear la variable global
-    console.log("Guide canvas removido.");
   }
 
   // Limpiar el blob almacenado
   originalImageBlob = null;
-  console.log("Blob/archivo original limpiado.");
   
   // Limpiar el canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
