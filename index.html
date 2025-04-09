@@ -43,15 +43,21 @@
                     </select>
                     
                     <div id="BitContainer" class="items-center gap-2">
-                        <label class="flex items-center space-x-2">
+                        <label class="flex items-center space-x-2 group relative" title="Produces smaller and more compressed images">
                             <input type="checkbox" id="8Bit" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
                             <span>8Bit</span>
+                            <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg w-48 text-center pointer-events-none z-10">
+                                Produces smaller and more compressed images
+                            </div>
                         </label>
                         
                         <!-- Checkbox para Noise -->
                         <label class="flex items-center space-x-2 ml-2 hidden" id="noiseCheckboxContainer" title="Adding noise can significantly improve the quality of quantized images">
                             <input type="checkbox" id="addNoise" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
-                            <span>Noise 20%</span>
+                            <span>Noise</span>
+                            <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg w-48 text-center pointer-events-none z-10">
+                                Adding noise to a quantized image can improve overall quality
+                            </div>
                         </label>
                         
                         <div class="relative flex items-center">
@@ -95,50 +101,50 @@
     <!-- Popup para información de métodos de cuantificación -->
     <div id="methodInfoPopup" class="fixed hidden inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
         <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg max-w-md w-full text-gray-800 dark:text-white">
-            <h3 class="text-xl font-bold mb-4">Methods Ranking</h3>
+            <h3 class="text-xl font-bold mb-4">Quantization Ranking FTW 🐸☝️</h3>
             
             <!-- Headers para Calidad y Velocidad -->
-            <div class="flex justify-between items-center mb-3">
+            <div class="flex justify-between items-center mb-3 px-3">
                 <div class="font-medium">Method</div>
-                <div class="flex space-x-8">
-                    <span class="font-medium text-yellow-500">Quality</span>
-                    <span class="font-medium text-blue-400">Speed</span>
+                <div class="flex justify-end w-full max-w-[200px]">
+                    <span class="font-medium text-yellow-500 w-20 text-center">Quality</span>
+                    <span class="font-medium text-blue-400 w-20 text-center">Speed</span>
                 </div>
             </div>
-            <div class="space-y-4">
-                <div class="flex justify-between items-center">
+            <div class="space-y-1">
+                <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-3 rounded">
                     <div class="font-medium">NeuQuant</div>
-                    <div class="flex space-x-8">
-                        <span class="text-yellow-500">★★★★★</span>
-                        <span class="text-blue-400">★☆☆☆☆</span>
+                    <div class="flex justify-end w-full max-w-[200px]">
+                        <span class="text-yellow-500 w-20 text-center">★★★★★</span>
+                        <span class="text-blue-400 w-20 text-center">★☆☆☆☆</span>
                     </div>
                 </div>
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center p-3 rounded">
                     <div class="font-medium">Median Cut</div>
-                    <div class="flex space-x-8">
-                        <span class="text-yellow-500">★★★★☆</span>
-                        <span class="text-blue-400">★★★★★</span>
+                    <div class="flex justify-end w-full max-w-[200px]">
+                        <span class="text-yellow-500 w-20 text-center">★★★★☆</span>
+                        <span class="text-blue-400 w-20 text-center">★★★★★</span>
                     </div>
                 </div>
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-3 rounded">
                     <div class="font-medium">K-Means</div>
-                    <div class="flex space-x-8">
-                        <span class="text-yellow-500">★★★★☆</span>
-                        <span class="text-blue-400">★★☆☆☆</span>
+                    <div class="flex justify-end w-full max-w-[200px]">
+                        <span class="text-yellow-500 w-20 text-center">★★★★☆</span>
+                        <span class="text-blue-400 w-20 text-center">★★★★★</span>
                     </div>
                 </div>
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center p-3 rounded">
                     <div class="font-medium">Popularity Quant.</div>
-                    <div class="flex space-x-8">
-                        <span class="text-yellow-500">★★★☆☆</span>
-                        <span class="text-blue-400">★★★★☆</span>
+                    <div class="flex justify-end w-full max-w-[200px]">
+                        <span class="text-yellow-500 w-20 text-center">★★☆☆☆</span>
+                        <span class="text-blue-400 w-20 text-center">★★★★★</span>
                     </div>
                 </div>
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-3 rounded">
                     <div class="font-medium">Error Diffusion</div>
-                    <div class="flex space-x-8">
-                        <span class="text-yellow-500">★★★☆☆</span>
-                        <span class="text-blue-400">★★★☆☆</span>
+                    <div class="flex justify-end w-full max-w-[200px]">
+                        <span class="text-yellow-500 w-20 text-center">★★★☆☆</span>
+                        <span class="text-blue-400 w-20 text-center">★★★☆☆</span>
                     </div>
                 </div>
             </div>

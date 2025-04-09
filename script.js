@@ -550,20 +550,38 @@ function imageDataToBMP(imageData) {
         offset += 2;
         dataView.setUint16(offset, 24, true);
         offset += 2;
-        dataView.setUint32(offset, rowBytes, true);
+        // Completar correctamente el encabezado de BMP - AÑADIENDO CAMPOS FALTANTES
+        dataView.setUint32(offset, 0, true); // Compresión - debe ser 0 para RGB sin comprimir
+        offset += 4;
+        dataView.setUint32(offset, rowBytes * height, true); // Tamaño de la imagen en bytes
+        offset += 4;
+        dataView.setInt32(offset, 0, true); // Resolución horizontal (píxeles por metro)
+        offset += 4;
+        dataView.setInt32(offset, 0, true); // Resolución vertical (píxeles por metro)
+        offset += 4;
+        dataView.setUint32(offset, 0, true); // Número de colores en la paleta (0 para todos)
+        offset += 4;
+        dataView.setUint32(offset, 0, true); // Número de colores importantes (0 para todos)
         offset += 4;
 
-        for (let y = height -1; y >=0 ; y--) {
+        // Escribir los datos de los píxeles con el relleno correcto
+        const padding = rowBytes - (width * 3);
+        
+        for (let y = height - 1; y >= 0; y--) {
             for (let x = 0; x < width; x++) {
                 let index = (y * width + x) * 4;
                 let r = imageData.data[index];
-                let g = imageData.data[index +1];
-                let b = imageData.data[index +2];
+                let g = imageData.data[index + 1];
+                let b = imageData.data[index + 2];
                 dataView.setUint8(offset++, b);
                 dataView.setUint8(offset++, g);
                 dataView.setUint8(offset++, r);
             }
-            offset += rowBytes - width * 3;
+            
+            // Agregar bytes de relleno al final de cada fila para cumplir con la alineación de 4 bytes
+            for (let p = 0; p < padding; p++) {
+                dataView.setUint8(offset++, 0);
+            }
         }
         
         return buffer;

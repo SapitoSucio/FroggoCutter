@@ -240,7 +240,7 @@ body.dark-mode select option {
 }
 
 #methodInfoBtn:hover {
-  transform: translateY(-50%) scale(1.15);
+  transform: scale(1.15);
 }
 
 /* Ajustes para el checkbox de ruido */
