@@ -18,17 +18,24 @@ const bitContainer = document.getElementById('BitContainer');
 function handleOutputFormatChange() {
   const isTLoginFormat = outputFormatSelect.value === 't_login';
 
-  // Ocultar  o mostrar el contenedor del checkbox8Bit y selectPaletteMethod
-  bitContainer.style.display = isTLoginFormat ? 'none' : 'unset';
-  selectPaletteMethod.style.display = isTLoginFormat ? 'none' : 'unset';
+  // Ocultar o mostrar el contenedor del checkbox8Bit y selectPaletteMethod
+  if (isTLoginFormat) {
+    bitContainer.style.display = 'none';
+    selectPaletteMethod.style.display = 'none';
+  } else {
+    bitContainer.style.display = 'flex';
+    selectPaletteMethod.style.display = checkbox8Bit.checked ? 'block' : 'none';
+  }
 
   // Deshabilitar o habilitar el selectPaletteMethod según el estado del checkbox8Bit
-  if (!isTLoginFormat) {
-    selectPaletteMethod.disabled = !checkbox8Bit.checked;
-  }
+  selectPaletteMethod.disabled = isTLoginFormat || !checkbox8Bit.checked;
 }
 
 outputFormatSelect.addEventListener('change', handleOutputFormatChange);
+
+// Ejecutar al cargar la página para establecer el estado inicial
+document.addEventListener('DOMContentLoaded', handleOutputFormatChange);
+
 const handleDarkModeChange = (e) => {
   const isDarkMode = e.matches;
   if (isDarkMode) {
@@ -55,8 +62,10 @@ let selectPaletteMethod = document.getElementById("paletteMethod");
 checkbox8Bit.addEventListener("change", function() {
     if (this.checked) {
         selectPaletteMethod.removeAttribute("disabled");
+        selectPaletteMethod.style.display = "block";
     } else {
         selectPaletteMethod.setAttribute("disabled", "");
+        selectPaletteMethod.style.display = "none";
     }
 });
 
@@ -69,11 +78,17 @@ const cropButton = document.getElementById('cropButton');
 
 // Eliminar la inicialización inicial del cropper
 let cropper = null;
+let originalImageWidth = 0;
+let originalImageHeight = 0;
 
 function drawImageOnCanvas(img) {
-  // Obtener el tamaño del viewport disponible
-  const maxWidth = Math.min(800, window.innerWidth * 0.8);
-  const maxHeight = Math.min(600, window.innerHeight * 0.6);
+  // Calcular el espacio disponible basado en el contenedor
+  const parentElement = document.querySelector('.flex-1.relative');
+  const containerRect = parentElement.getBoundingClientRect();
+  
+  // Usar dimensiones del contenedor para calcular el máximo tamaño
+  const maxWidth = containerRect.width * 0.95; // 95% del ancho del contenedor
+  const maxHeight = containerRect.height * 0.95; // 95% del alto del contenedor
   
   // Calcular las proporciones
   let width = img.width;
@@ -100,17 +115,24 @@ function loadImage(src) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
+      // Guardar las dimensiones originales
+      originalImageWidth = img.naturalWidth;
+      originalImageHeight = img.naturalHeight;
+      console.log(`Cargando imagen con dimensiones: ${originalImageWidth}x${originalImageHeight}`);
+      
       drawImageOnCanvas(img);
+      
       // Si ya existe un cropper, destruirlo
       if (cropper) {
         cropper.destroy();
       }
-      // Crear nuevo cropper
+      
+      // Crear nuevo cropper con opciones simplificadas
       cropper = new Cropper(canvas, {
-        viewMode: 2, // Restringir el área de recorte al canvas
+        viewMode: 1,
         dragMode: 'move',
-        aspectRatio: 16 / 9,
-        autoCropArea: 1,
+        aspectRatio: NaN, // Sin relación de aspecto fija
+        autoCropArea: 1, // Cubrir toda la imagen inicialmente
         restore: false,
         guides: true,
         center: true,
@@ -118,7 +140,13 @@ function loadImage(src) {
         cropBoxMovable: true,
         cropBoxResizable: true,
         toggleDragModeOnDblclick: true,
+        ready: function() {
+          // Este evento ocurre cuando el cropper está completamente inicializado
+          // No hacemos nada especial aquí, solo dejamos que cropper maneje el estado inicial
+          console.log("Cropper inicializado correctamente");
+        }
       });
+      
       resolve(img);
     };
     img.src = src;
@@ -134,15 +162,28 @@ async function handleImageLoad(file) {
   try {
     const imgUrl = URL.createObjectURL(file);
     
-    // Ocultar dropZone y mostrar container
-    dropZone.style.visibility = 'hidden';
-    dropZone.style.display = 'none';
-    dropZone.style.pointerEvents = 'none';
+    // Transición suave del dropZone al container
+    // 1. Agregar clase para desvanecer el dropZone
+    dropZone.classList.add('fade-out');
     
+    // 2. Mostrar el container pero con opacidad 0
     container.classList.remove('hidden');
     container.style.display = 'flex';
     container.style.alignItems = 'center';
     container.style.justifyContent = 'center';
+    container.style.width = '100%';
+    container.style.height = '100%';
+    
+    // 3. Esperar un momento para la transición
+    setTimeout(() => {
+      // 4. Ocultar completamente el dropZone
+      dropZone.style.visibility = 'hidden';
+      dropZone.style.display = 'none';
+      dropZone.style.pointerEvents = 'none';
+      
+      // 5. Mostrar el container con una transición de opacidad
+      container.classList.add('fade-in');
+    }, 300);
     
     // Cargar la imagen
     await loadImage(imgUrl);
@@ -155,27 +196,76 @@ async function handleImageLoad(file) {
 
 cropButton.addEventListener('click', () => {
     const outputFormat = outputFormatSelect.value;
-  
-    if (outputFormat === 't_login') {
-      // Crear una única imagen en formato .jpg
-      cropper.getCroppedCanvas().toBlob((blob) => {
-        saveAs(blob, 't_login.jpg');
-    }, 'image/jpeg');
+    
+    // Obtener los datos actuales del recorte y la imagen
+    const cropData = cropper.getData(true); // Usar true para obtener valores enteros
+    const imageData = cropper.getImageData();
+    const canvasData = cropper.getCanvasData();
+    
+    // Calcular la proporción entre la imagen mostrada y la original
+    const scaleX = originalImageWidth / imageData.naturalWidth;
+    const scaleY = originalImageHeight / imageData.naturalHeight;
+    
+    // Verificar si el área seleccionada es aproximadamente toda la imagen
+    const isFullSelection = 
+      Math.abs(cropData.width - imageData.naturalWidth) < 10 && 
+      Math.abs(cropData.height - imageData.naturalHeight) < 10;
+    
+    // Mostrar información de debug
+    console.log(`Dimensiones originales: ${originalImageWidth}x${originalImageHeight}`);
+    console.log(`Dimensiones naturales de la imagen: ${imageData.naturalWidth}x${imageData.naturalHeight}`);
+    console.log(`Área seleccionada: ${cropData.width}x${cropData.height}`);
+    
+    // Determinar las dimensiones finales
+    let finalWidth, finalHeight;
+    
+    if (isFullSelection) {
+      // Si se seleccionó toda la imagen, usar las dimensiones originales exactas
+      console.log("Se detectó selección de imagen completa - usando dimensiones originales");
+      finalWidth = originalImageWidth;
+      finalHeight = originalImageHeight;
     } else {
-      // El código actual para generar el archivo .zip con imágenes BMP
-      cropper.getCroppedCanvas().toBlob((blob) => {
+      // Si se seleccionó un área específica, escalar proporcionalmente
+      finalWidth = Math.round(cropData.width * scaleX);
+      finalHeight = Math.round(cropData.height * scaleY);
+      console.log(`Dimensiones calculadas del recorte: ${finalWidth}x${finalHeight}`);
+    }
+    
+    // Opciones para generar el canvas final
+    const cropOptions = {
+      width: finalWidth,
+      height: finalHeight,
+      imageSmoothingEnabled: false // Evitar suavizado para mantener nitidez
+    };
+    
+    if (outputFormat === 't_login') {
+      // Generar la imagen y guardarla en formato JPEG
+      const croppedCanvas = cropper.getCroppedCanvas(cropOptions);
+      console.log(`Dimensiones finales del canvas: ${croppedCanvas.width}x${croppedCanvas.height}`);
+      
+      croppedCanvas.toBlob((blob) => {
+        saveAs(blob, 't_login.jpg');
+      }, 'image/jpeg', 1.0);
+    } else {
+      // Para BMP, generar la imagen y dividirla en secciones
+      const croppedCanvas = cropper.getCroppedCanvas(cropOptions);
+      console.log(`Dimensiones finales del canvas para BMP: ${croppedCanvas.width}x${croppedCanvas.height}`);
+      
+      croppedCanvas.toBlob((blob) => {
         const zip = new JSZip();
         const numRows = 3;
         const numCols = 4;
-        const maxWidth = cropper.getCroppedCanvas().width;
-        const maxHeight = cropper.getCroppedCanvas().height;
-        const sectionWidth = Math.min(Math.ceil(maxWidth / numCols), maxWidth);
-        const sectionHeight = Math.min(Math.ceil(maxHeight / numRows), maxHeight);
+        const maxWidth = croppedCanvas.width;
+        const maxHeight = croppedCanvas.height;
+        const sectionWidth = Math.floor(maxWidth / numCols);
+        const sectionHeight = Math.floor(maxHeight / numRows);
         const totalWidth = sectionWidth * numCols;
         const totalHeight = sectionHeight * numRows;
+        
+        // Usar el canvas global para crear secciones
         canvas.width = totalWidth;
         canvas.height = totalHeight;
-        ctx.drawImage(cropper.getCroppedCanvas(), 0, 0, totalWidth, totalHeight);
+        ctx.drawImage(croppedCanvas, 0, 0, totalWidth, totalHeight);
         addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight);
         zip.generateAsync({type: 'blob'}).then((content) => {
           saveAs(content, 'squares.zip');
@@ -492,6 +582,7 @@ document.getElementById('aspectRatio11').addEventListener('click', () => {
 });
 
 document.getElementById('aspectRatioFree').addEventListener('click', () => {
+    // Eliminar cualquier relación de aspecto fija
     cropper.setAspectRatio(NaN);
 });
 
@@ -553,21 +644,36 @@ function resetUI() {
   // Limpiar el canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   
-  // Ocultar el container
-  container.classList.add('hidden');
-  container.style.display = 'none';
+  // Ocultar el container con transición
+  container.classList.remove('fade-in');
   
-  // Mostrar el dropZone
-  dropZone.style.visibility = 'visible';
-  dropZone.style.display = 'flex';
-  dropZone.style.pointerEvents = 'auto';
+  setTimeout(() => {
+    // Ocultar completamente el container
+    container.classList.add('hidden');
+    container.style.display = 'none';
+    
+    // Mostrar el dropZone con transición
+    dropZone.style.visibility = 'visible';
+    dropZone.style.display = 'flex';
+    dropZone.style.pointerEvents = 'auto';
+    
+    // Eliminar la clase fade-out después de mostrar
+    setTimeout(() => {
+      dropZone.classList.remove('fade-out');
+    }, 50);
+  }, 300);
 }
 
 // Reemplazar el event listener existente para el botón reset
 document.getElementById('reset').addEventListener('click', () => {
-  if (cropper) {
+  if (cropper && container.style.display !== 'none' && !container.classList.contains('hidden')) {
+    // Si el cropper está activo y visible, simplemente lo reseteamos
     cropper.reset();
+    
+    // También aseguramos que no haya relación de aspecto forzada
+    cropper.setAspectRatio(NaN);
   } else {
+    // Si no hay cropper activo o está oculto, resetear toda la UI
     resetUI();
   }
 });

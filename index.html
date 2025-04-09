@@ -17,49 +17,55 @@
 </head>
 <body class="h-full flex flex-col min-h-screen bg-gray-100 text-gray-900">
     <div class="container mx-auto px-4 py-6 flex flex-col h-full">
-        <!-- Controles superiores -->
-        <div class="flex flex-wrap gap-4 justify-center items-center mb-4">
-            <select id="outputFormat" class="rounded-2xl border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300">
-                <option value="t_login">t_login</option>
-                <option value="bmp">BMP</option>
-            </select>
-            
-            <div id="BitContainer" class="hidden items-center gap-2">
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" id="8Bit" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
-                    <span>8Bit</span>
-                </label>
-                <select id="paletteMethod" disabled class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300">
-                    <option value="medianCut">medianCut</option>
-                    <option value="kmeans">kmeans</option>
-                    <option value="popularityQuantization">popularityQuantization</option>
-                </select>
-            </div>
-        </div>
-
         <!-- Área principal para la imagen -->
-        <div class="flex-1 relative flex items-center justify-center mb-4" style="min-height: 65vh;">
+        <div class="flex-1 relative flex items-center justify-center py-6 mb-4" style="min-height: 70vh;">
             <input type="file" id="imageInput" accept="image/*" class="hidden">
             
-            <div id="dropZone" class="absolute inset-0 border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center text-lg text-gray-500 cursor-pointer hover:border-green-500 transition-colors duration-300 z-10">
+            <div id="dropZone" class="absolute inset-0 border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center text-lg text-gray-500 cursor-pointer hover:border-green-500 transition-colors duration-300 z-10 p-4">
                 Click here, drag and drop, or Ctrl+V to paste an image
             </div>
 
-            <div id="container" class="absolute inset-0 hidden">
+            <div id="container" class="absolute inset-0 hidden rounded-2xl">
                 <canvas id="canvas" class="rounded-2xl"></canvas>
             </div>
         </div>
 
         <!-- Controles inferiores -->
         <div class="mt-auto">
-            <div class="flex flex-wrap justify-center gap-4 mb-4">
-                <button id="aspectRatio169" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300" title="Best aspect ratio for Ragnarok clients in fullscreen">16:9</button>
-                <button id="aspectRatio43" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">4:3</button>
-                <button id="aspectRatio11" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">1:1</button>
-                <button id="aspectRatioFree" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Free</button>
-                <button id="reset" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Reset</button>
+            <!-- Controles en una sola fila -->
+            <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                <!-- Panel de controles de formato (ahora a la izquierda) -->
+                <div class="bg-white dark:bg-gray-700 p-3 rounded-2xl shadow-md flex flex-wrap gap-3 items-center">
+                    <div class="font-medium">Format:</div>
+                    <select id="outputFormat" class="rounded-2xl border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300">
+                        <option value="t_login">t_login</option>
+                        <option value="bmp">BMP</option>
+                    </select>
+                    
+                    <div id="BitContainer" class="hidden items-center gap-2 ml-2">
+                        <label class="flex items-center space-x-2">
+                            <input type="checkbox" id="8Bit" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                            <span>8Bit</span>
+                        </label>
+                        <select id="paletteMethod" disabled class="border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300">
+                            <option value="medianCut">medianCut</option>
+                            <option value="kmeans">kmeans</option>
+                            <option value="popularityQuantization">popularityQuantization</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Control de relación de aspecto (ahora en el centro) -->
+                <div class="flex flex-wrap gap-4">
+                    <button id="aspectRatio169" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300" title="Best aspect ratio for Ragnarok clients in fullscreen">16:9</button>
+                    <button id="aspectRatio43" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">4:3</button>
+                    <button id="aspectRatio11" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">1:1</button>
+                    <button id="aspectRatioFree" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Free</button>
+                    <button id="reset" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Reset</button>
+                </div>
             </div>
 
+            <!-- Botón de recorte y descarga (ahora centrado en su propia fila) -->
             <div class="flex justify-center mb-4">
                 <button id="cropButton" class="relative px-6 py-3 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">
                     Crop & Download
