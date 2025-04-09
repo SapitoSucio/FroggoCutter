@@ -61,6 +61,8 @@ let selectPaletteMethod = document.getElementById("paletteMethod");
 
 // Variable global para almacenar el blob/archivo de imagen original
 let originalImageBlob = null;
+// Variable global para el canvas de las guías personalizadas
+let guideCanvas = null;
 
 checkbox8Bit.addEventListener("change", function() {
     if (this.checked) {
@@ -194,30 +196,57 @@ async function handleImageLoad(file) {
         console.log("Imagen dibujada en el canvas.");
 
         // --- Inicializar Cropper DESPUÉS de dibujar ---
-        // No es necesario esperar a que termine la transición visual.
-        // El cropper se inicializará sobre la imagen ya dibujada.
         cropper = new Cropper(canvas, {
             viewMode: 1,
             dragMode: 'move',
             aspectRatio: NaN,
             autoCropArea: 1,
             restore: false,
-            guides: true,
+            guides: false, // Mantenemos las guías por defecto desactivadas
             center: true,
             highlight: false,
             cropBoxMovable: true,
             cropBoxResizable: true,
             toggleDragModeOnDblclick: true,
-            // No necesitamos el 'ready' aquí si no hacemos nada especial
-            // ready: function() { console.log("Cropper inicializado correctamente"); }
+            ready: function () { // Usar el evento ready oficial de Cropper.js
+                console.log("Cropper ready event fired.");
+                // Crear y añadir canvas para guías personalizadas AQUÍ
+                // Asegurarse de que solo se cree una vez
+                if (!document.getElementById('guideCanvas')) {
+                    // Intentar encontrar el contenedor que Cropper crea
+                    const cropperContainer = canvas.parentElement.querySelector('.cropper-container');
+                    if (cropperContainer) {
+                        guideCanvas = document.createElement('canvas');
+                        guideCanvas.id = 'guideCanvas'; // ID para fácil referencia/eliminación
+                        // Estilos para superponer el canvas
+                        guideCanvas.style.position = 'absolute';
+                        guideCanvas.style.top = '0';
+                        guideCanvas.style.left = '0';
+                        // z-index alto para estar sobre la imagen, pero puede ajustarse
+                        // si interfiere con los manejadores del cropper.
+                        guideCanvas.style.zIndex = '10';
+                        guideCanvas.style.pointerEvents = 'none'; // Ignorar clics/eventos de ratón
+                        cropperContainer.appendChild(guideCanvas);
+                        console.log("Guide canvas añadido.");
+
+                        // Dibujar guías iniciales ahora que el cropper está listo
+                        drawCustomGuides();
+
+                        // Añadir listener para redibujar en cambios futuros (drag, resize)
+                        canvas.addEventListener('crop', drawCustomGuides);
+                         console.log("Listeners de guías ('crop') añadidos.");
+
+                    } else {
+                        console.error("No se encontró '.cropper-container' para añadir las guías.");
+                    }
+                }
+            } // Fin del 'ready' callback
         });
         console.log("Nueva instancia de Cropper creada.");
-
 
     } catch (error) {
         console.error("Error durante la carga/procesamiento de la imagen:", error);
         alert(`Hubo un error: ${error.message || "Por favor, inténtalo de nuevo."}`);
-        // Resetear UI en caso de error grave
         resetUI();
     }
 }
@@ -797,16 +826,91 @@ document.addEventListener('paste', async (event) => {
   }
 });
 
+// NUEVA FUNCIÓN para dibujar las guías personalizadas 4x3
+function drawCustomGuides() {
+    // Usa el ID para obtener el elemento canvas de las guías
+    const guideCanvasElement = document.getElementById('guideCanvas');
+    // Salir si el cropper o el canvas de guías no están listos
+    if (!cropper || !guideCanvasElement || !cropper.ready) {
+        return;
+    }
+
+    const ctx = guideCanvasElement.getContext('2d');
+    const containerData = cropper.getContainerData(); // Dimensiones del contenedor del cropper
+    const cropBoxData = cropper.getCropBoxData(); // Posición y tamaño del área de recorte
+
+    // Ajustar tamaño del canvas de guías al contenedor del cropper
+    // Esto asegura que el sistema de coordenadas sea el correcto
+    guideCanvasElement.width = containerData.width;
+    guideCanvasElement.height = containerData.height;
+
+    // Limpiar el canvas antes de redibujar
+    ctx.clearRect(0, 0, guideCanvasElement.width, guideCanvasElement.height);
+
+    // Configuración de las guías (ajusta el estilo como prefieras)
+    const numRows = 3; // Número de filas deseadas
+    const numCols = 4; // Número de columnas deseadas
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)'; // Blanco semi-transparente
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]); // Estilo línea discontinua (ej: 4px linea, 3px espacio)
+
+    // Coordenadas y dimensiones del crop box relativo al contenedor
+    const cropX = cropBoxData.left;
+    const cropY = cropBoxData.top;
+    const cropWidth = cropBoxData.width;
+    const cropHeight = cropBoxData.height;
+
+    // Dibujar líneas verticales (numCols - 1 líneas)
+    if (cropWidth > 0 && numCols > 1) {
+        const colWidth = cropWidth / numCols;
+        for (let i = 1; i < numCols; i++) {
+            const x = cropX + i * colWidth;
+            ctx.beginPath();
+            ctx.moveTo(Math.round(x), Math.round(cropY)); // Usar Math.round para líneas más nítidas
+            ctx.lineTo(Math.round(x), Math.round(cropY + cropHeight));
+            ctx.stroke();
+        }
+    }
+
+    // Dibujar líneas horizontales (numRows - 1 líneas)
+    if (cropHeight > 0 && numRows > 1) {
+        const rowHeight = cropHeight / numRows;
+        for (let j = 1; j < numRows; j++) {
+            const y = cropY + j * rowHeight;
+            ctx.beginPath();
+            ctx.moveTo(Math.round(cropX), Math.round(y));
+            ctx.lineTo(Math.round(cropX + cropWidth), Math.round(y));
+            ctx.stroke();
+        }
+    }
+
+    // Restaurar estilo de línea por defecto
+    ctx.setLineDash([]);
+}
+
 // Añadir la función resetUI después de la función handleImageLoad
 function resetUI() {
   // Si hay un cropper activo, destruirlo
   if (cropper) {
+    // Remover listener de guías ANTES de destruir el cropper
+    // Asegurarse que el listener se añadió al elemento correcto ('canvas')
+    canvas.removeEventListener('crop', drawCustomGuides);
+    console.log("Listeners de guías ('crop') removidos.");
+
     // Revocar URL de objeto antes de destruir
     if (cropper.url) {
         URL.revokeObjectURL(cropper.url);
     }
     cropper.destroy();
     cropper = null;
+  }
+
+  // Remover el canvas de guías si existe
+  const existingGuideCanvas = document.getElementById('guideCanvas');
+  if (existingGuideCanvas) {
+    existingGuideCanvas.remove();
+    guideCanvas = null; // Resetear la variable global
+    console.log("Guide canvas removido.");
   }
 
   // Limpiar el blob almacenado
