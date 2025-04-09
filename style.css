@@ -118,7 +118,6 @@ body.dark-mode .bg-white.dark\:bg-gray-700 {
   pointer-events: auto;
   cursor: pointer;
   transition: all 0.3s ease-in-out;
-  padding: 20px;
 }
 
 #dropZone.fade-out {
@@ -140,7 +139,6 @@ body.dark-mode .bg-white.dark\:bg-gray-700 {
   width: 100%;
   height: 100%;
   position: relative;
-  padding: 20px;
   transition: opacity 0.3s ease-in-out;
   opacity: 0;
 }

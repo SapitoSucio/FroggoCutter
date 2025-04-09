@@ -115,10 +115,10 @@ function drawImageOnCanvas(img) {
   // Calcular el espacio disponible basado en el contenedor
   const parentElement = document.querySelector('.flex-1.relative');
   const containerRect = parentElement.getBoundingClientRect();
-  
-  // Usar dimensiones del contenedor para calcular el máximo tamaño
-  const maxWidth = containerRect.width * 0.95; // 95% del ancho del contenedor
-  const maxHeight = containerRect.height * 0.95; // 95% del alto del contenedor
+
+  // Usar dimensiones del contenedor para calcular el máximo tamaño (100%)
+  const maxWidth = containerRect.width; // Eliminado * 0.95
+  const maxHeight = containerRect.height; // Eliminado * 0.95
   
   // Calcular las proporciones
   let width = img.width;
