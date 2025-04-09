@@ -80,6 +80,29 @@ body.dark-mode select option {
   max-width: 300px; /* Ancho suficiente - ajusta si es necesario */
 }
 
+/* Add similar transition styles for the Noise dropdown container */
+#noiseControlContainer {
+  display: flex; /* Keep flex layout */
+  align-items: center; /* Keep items centered */
+  overflow: hidden;
+  opacity: 0;
+  max-height: 0;
+  max-width: 0; 
+  padding: 0;
+  border: 0px!important;
+  margin: 0; 
+  /* transition properties should match #paletteMethod */
+  transition: opacity 0.3s ease, max-height 0.4s ease, max-width 0.4s ease, padding 0.4s ease, margin 0.4s ease;
+}
+
+#noiseControlContainer.visible {
+  opacity: 1;
+  max-height: 50px!important; /* Match palette method */
+  max-width: 300px; /* Match palette method (adjust if needed) */
+  /* Re-apply margin/gap if needed when visible - Tailwind gap-2 on parent div might suffice */
+   margin-left: 0.5rem; /* Add back left margin when visible like original noise checkbox container had */
+}
+
 @media screen and (max-width: 800px) {
   .flex.justify-between {
     justify-content: center;

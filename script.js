@@ -14,8 +14,11 @@ if (isDarkMode) {
 
 const outputFormatSelect = document.getElementById('outputFormat');
 const bitContainer = document.getElementById('BitContainer');
-const noiseCheckboxContainer = document.getElementById('noiseCheckboxContainer');
 const methodInfoBtn = document.getElementById('methodInfoBtn');
+
+// Get the new noise select dropdown and its container
+const noiseControlContainer = document.getElementById('noiseControlContainer');
+const noiseLevelSelect = document.getElementById('noiseLevelSelect');
 
 function handleOutputFormatChange() {
   const isTLoginFormat = outputFormatSelect.value === 't_login';
@@ -29,14 +32,15 @@ function handleOutputFormatChange() {
     bitContainer.classList.remove('visible');
   }
 
-  // Controlar visibilidad de Noise Checkbox and Method Info Button (Shown only for BMP)
+  // Controlar visibilidad de Noise Dropdown and Method Info Button (Shown only for BMP)
   if (isBmpFormat) {
-    noiseCheckboxContainer.classList.remove('hidden'); // Use remove/add hidden class
-    methodInfoBtn.classList.remove('hidden');
+    noiseControlContainer.classList.add('visible'); // Use visible class for transition
+    methodInfoBtn.classList.remove('hidden'); // Keep using hidden for button
   } else {
-    noiseCheckboxContainer.classList.add('hidden');
-    methodInfoBtn.classList.add('hidden');
-    addNoiseCheckbox.checked = false; // Uncheck noise if switching away from BMP
+    noiseControlContainer.classList.remove('visible'); // Use visible class for transition
+    methodInfoBtn.classList.add('hidden'); // Keep using hidden for button
+    // Reset noise dropdown when hiding
+    noiseLevelSelect.value = '0'; 
   }
 
   // Controlar visibilidad y estado de selectPaletteMethod
@@ -77,7 +81,6 @@ darkModeBtn.addEventListener('click', () => {
 
 let checkbox8Bit = document.getElementById("8Bit");
 let selectPaletteMethod = document.getElementById("paletteMethod");
-let addNoiseCheckbox = document.getElementById("addNoise");
 
 // Variable global para almacenar el blob/archivo de imagen original
 let originalImageBlob = null;
@@ -503,7 +506,8 @@ import { nearestColorIndex } from './utils.js';
 
 function imageDataToBMP(imageData) {
     let is8Bit = document.getElementById("8Bit").checked;
-    const addNoise = document.getElementById("addNoise").checked;
+    // Read noise intensity directly from the select dropdown
+    const noiseIntensity = parseInt(document.getElementById("noiseLevelSelect").value, 10) || 0;
     
     const width = imageData.width;
     const height = imageData.height;
@@ -555,8 +559,8 @@ function imageDataToBMP(imageData) {
         const imageDataCopy = new Uint8ClampedArray(imageData.data);
         
         // Si se seleccionó la opción de ruido, aplicarlo antes de cuantificar
-        if (addNoise) {
-            applyNoise(imageDataCopy, width, height, 20); // 20% de intensidad de ruido
+        if (noiseIntensity > 0) {
+            applyNoise(imageDataCopy, width, height, noiseIntensity);
         }
 
         // Procesar los píxeles y escribirlos en el buffer
@@ -575,7 +579,6 @@ function imageDataToBMP(imageData) {
         return buffer;
     } else {
         // Apply noise if checked, even for 24-bit BMP
-        const addNoise = document.getElementById("addNoise").checked;
         const width = imageData.width;
         const height = imageData.height;
 
@@ -619,8 +622,8 @@ function imageDataToBMP(imageData) {
         const imageDataCopy = new Uint8ClampedArray(imageData.data);
         
         // Apply noise if the checkbox is checked, before writing pixels
-        if (addNoise) {
-            applyNoise(imageDataCopy, width, height, 20); // Apply 20% noise
+        if (noiseIntensity > 0) {
+            applyNoise(imageDataCopy, width, height, noiseIntensity);
         }
         
         // Escribir los datos de los píxeles con el relleno correcto

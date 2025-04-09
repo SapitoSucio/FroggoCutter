@@ -44,7 +44,8 @@
                     
                     <div id="BitContainer" class="items-center gap-2">
                         
-                        <!-- Checkbox para Noise -->
+                        <!-- Remove Noise Checkbox -->
+                        <!-- 
                         <label class="flex items-center space-x-2 ml-2" id="noiseCheckboxContainer" title="Adding noise can improve the quality of BMP images displayed on the client login screen.">
                             <input type="checkbox" id="addNoise" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
                             <span>Noise</span>
@@ -52,6 +53,35 @@
                                 Adding noise can improve the quality of BMP images displayed on the client login screen.
                             </div>
                         </label>
+                        -->
+
+                        <!-- Remove High Intensity Noise Checkbox -->
+                        <!--
+                        <label class="flex items-center space-x-2 ml-2 group relative" id="highIntensityNoiseContainer" title="Increases noise intensity from 20% to 80%">
+                            <input type="checkbox" id="highIntensityNoise" class="rounded border-gray-300 text-orange-600 focus:ring-orange-500">
+                            <span class="text-sm">High</span> 
+                            <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg w-48 text-center pointer-events-none z-10">
+                                Increases noise intensity from 20% to 80%
+                            </div>
+                        </label>
+                        -->
+
+                        <!-- Add Noise Level Select Dropdown (inside a container for visibility control) -->
+                        <div id="noiseControlContainer" class="flex items-center gap-2 ml-2" title="Adding noise can significantly improve the image quality displayed on the RO client.">
+                            <label for="noiseLevelSelect" class="">Noise:</label> 
+                            <select id="noiseLevelSelect" class="rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500">
+                                <option value="0">No Noise</option>
+                                <option value="15">Low</option>
+                                <option value="45">Medium</option> <!-- Added Medium -->
+                                <option value="80">Over 9000</option> <!-- Renamed High -->
+                            </select>
+                        </div>
+                        
+
+                        <!-- SVG Separator -->
+                        <svg class="h-6 w-px mx-2 text-gray-400 dark:text-gray-600" fill="none" viewBox="0 0 1 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 0 V24"/>
+                        </svg>
                         
                         <label class="flex items-center space-x-2 group relative" title="Produces smaller and more compressed images">
                             <input type="checkbox" id="8Bit" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
@@ -61,7 +91,7 @@
                             </div>
                         </label>
                         <div class="relative flex items-center">
-                            <select id="paletteMethod" disabled class="border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500">
+                            <select id="paletteMethod" disabled class="rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500">
                                 <option value="medianCut">Median Cut</option>
                                 <option value="kmeans">K-Means</option>
                                 <option value="neuquant">NeuQuant</option>
