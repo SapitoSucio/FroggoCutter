@@ -345,7 +345,7 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
         const finalWidth = Math.round(preciseCropData.width * scaleX);
         const finalHeight = Math.round(preciseCropData.height * scaleY);
 
-        const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: false };
+        const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: true };
         finalCanvas = cropper.getCroppedCanvas(cropOptions);
          if (Math.abs(finalCanvas.width - finalWidth) > 1 || Math.abs(finalCanvas.height - finalHeight) > 1) {
              console.warn(`Dimensiones del canvas recortado difieren ligeramente de las calculadas.`);
@@ -385,7 +385,8 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
          tempCanvasForBMP.width = totalWidth;
          tempCanvasForBMP.height = totalHeight;
          const tempCtxForBMP = tempCanvasForBMP.getContext('2d', { willReadFrequently: true });
-         tempCtxForBMP.imageSmoothingEnabled = false;
+         tempCtxForBMP.imageSmoothingEnabled = true;
+         tempCtxForBMP.imageSmoothingQuality = 'high';
          tempCtxForBMP.drawImage(finalCanvas, 0, 0, totalWidth, totalHeight, 0, 0, totalWidth, totalHeight);
 
          addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight, tempCtxForBMP);
@@ -407,7 +408,8 @@ async function createFullCanvasFromCropperSource() {
     finalCanvas.width = originalImageWidth;
     finalCanvas.height = originalImageHeight;
     const finalCtx = finalCanvas.getContext('2d', { willReadFrequently: true });
-    finalCtx.imageSmoothingEnabled = false;
+    finalCtx.imageSmoothingEnabled = true;
+    finalCtx.imageSmoothingQuality = 'high';
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -431,16 +433,35 @@ function addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight, sourc
     for (let j = 0; j < numRows; j++) {
         for (let i = 0; i < numCols; i++) {
             try {
-                // Get image data from the provided source context
-                const imageData = sourceCtx.getImageData(
-                    i * sectionWidth,
-                    j * sectionHeight,
-                    sectionWidth,
-                    sectionHeight
+                // Create temporary canvas for section processing to maintain quality
+                const sectionCanvas = document.createElement('canvas');
+                sectionCanvas.width = sectionWidth;
+                sectionCanvas.height = sectionHeight;
+                const sectionCtx = sectionCanvas.getContext('2d', { willReadFrequently: true });
+                
+                // Enable image smoothing for better quality
+                sectionCtx.imageSmoothingEnabled = true;
+                sectionCtx.imageSmoothingQuality = 'high';
+                
+                // Extract the section from the source context
+                const sx = i * sectionWidth;
+                const sy = j * sectionHeight;
+                
+                // Draw this section to the section canvas
+                sectionCtx.drawImage(
+                    sourceCtx.canvas,
+                    sx, sy, sectionWidth, sectionHeight,
+                    0, 0, sectionWidth, sectionHeight
                 );
+                
+                // Get image data from the section canvas
+                const imageData = sectionCtx.getImageData(0, 0, sectionWidth, sectionHeight);
+                
+                // Convert to BMP
                 const bmpData = imageDataToBMP(imageData);
                 zip.file(`t_¹è°æ${j+1}-${i+1}.bmp`, bmpData);
             } catch (error) {
+                console.error(`Error processing section [${j+1}-${i+1}]:`, error);
             }
         }
     }
@@ -555,24 +576,27 @@ function imageDataToBMP(imageData) {
         offset += 4;
         dataView.setUint32(offset, rowBytes * height, true); // Tamaño de la imagen en bytes
         offset += 4;
-        dataView.setInt32(offset, 0, true); // Resolución horizontal (píxeles por metro)
+        dataView.setInt32(offset, 2835, true); // Resolución horizontal (píxeles por metro) - ~72 DPI
         offset += 4;
-        dataView.setInt32(offset, 0, true); // Resolución vertical (píxeles por metro)
+        dataView.setInt32(offset, 2835, true); // Resolución vertical (píxeles por metro) - ~72 DPI
         offset += 4;
         dataView.setUint32(offset, 0, true); // Número de colores en la paleta (0 para todos)
         offset += 4;
         dataView.setUint32(offset, 0, true); // Número de colores importantes (0 para todos)
         offset += 4;
 
+        // Crear copia para trabajar con los datos
+        const imageDataCopy = new Uint8ClampedArray(imageData.data);
+        
         // Escribir los datos de los píxeles con el relleno correcto
         const padding = rowBytes - (width * 3);
         
         for (let y = height - 1; y >= 0; y--) {
             for (let x = 0; x < width; x++) {
                 let index = (y * width + x) * 4;
-                let r = imageData.data[index];
-                let g = imageData.data[index + 1];
-                let b = imageData.data[index + 2];
+                let r = imageDataCopy[index];
+                let g = imageDataCopy[index + 1];
+                let b = imageDataCopy[index + 2];
                 dataView.setUint8(offset++, b);
                 dataView.setUint8(offset++, g);
                 dataView.setUint8(offset++, r);
