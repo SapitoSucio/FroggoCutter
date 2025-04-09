@@ -213,3 +213,55 @@ body.dark-mode select option {
   cursor: pointer;
 }
 
+/* Estilos para el popup de información de métodos */
+#methodInfoPopup {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+#methodInfoPopup .bg-white {
+  animation: scaleIn 0.3s ease-in-out;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Estilos para el botón de información */
+#methodInfoBtn {
+  transition: transform 0.2s ease;
+}
+
+#methodInfoBtn:hover {
+  transform: translateY(-50%) scale(1.15);
+}
+
+/* Ajustes para el checkbox de ruido */
+#addNoise {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#addNoise:checked {
+  background-color: #10b981;
+  border-color: #10b981;
+}
+
+/* Estilos para el popup en modo oscuro */
+body.dark-mode #methodInfoPopup .bg-white {
+  background-color: #374151;
+  color: #f2f2f2;
+}
+
+/* Ajustar la transición entre modo claro y oscuro */
+#methodInfoPopup .bg-white {
+  transition: background-color 0.5s, color 0.5s;
+}
+

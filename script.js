@@ -64,6 +64,9 @@ darkModeBtn.addEventListener('click', () => {
 
 let checkbox8Bit = document.getElementById("8Bit");
 let selectPaletteMethod = document.getElementById("paletteMethod");
+let methodInfoBtn = document.getElementById("methodInfoBtn");
+let noiseCheckboxContainer = document.getElementById("noiseCheckboxContainer");
+let addNoiseCheckbox = document.getElementById("addNoise");
 
 // Variable global para almacenar el blob/archivo de imagen original
 let originalImageBlob = null;
@@ -76,9 +79,18 @@ checkbox8Bit.addEventListener("change", function() {
     if (this.checked) {
         selectPaletteMethod.removeAttribute("disabled");
         selectPaletteMethod.classList.add('visible'); // Mostrar con transición
+        // Mostrar el botón de información de métodos
+        methodInfoBtn.classList.remove('hidden');
+        // Mostrar el contenedor del checkbox de Noise
+        noiseCheckboxContainer.classList.remove('hidden');
     } else {
         selectPaletteMethod.setAttribute("disabled", "");
         selectPaletteMethod.classList.remove('visible'); // Ocultar con transición
+        // Ocultar el botón de información de métodos
+        methodInfoBtn.classList.add('hidden');
+        // Ocultar y desmarcar el checkbox de Noise
+        noiseCheckboxContainer.classList.add('hidden');
+        addNoiseCheckbox.checked = false;
     }
     // No es necesario llamar a handleOutputFormatChange aquí,
     // a menos que el formato dependa directamente del estado del checkbox
@@ -86,7 +98,7 @@ checkbox8Bit.addEventListener("change", function() {
 
 const imageInput = document.getElementById('imageInput');
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
 const dropZone = document.getElementById('dropZone');
 const container = document.getElementById('container');
 const cropButton = document.getElementById('cropButton');
@@ -234,7 +246,6 @@ async function handleImageLoad(file) {
 
                         // Añadir listener para redibujar en cambios futuros (drag, resize)
                         canvas.addEventListener('crop', drawCustomGuides);
-
                     }
                 }
             } // Fin del 'ready' callback
@@ -373,7 +384,7 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
          const tempCanvasForBMP = document.createElement('canvas');
          tempCanvasForBMP.width = totalWidth;
          tempCanvasForBMP.height = totalHeight;
-         const tempCtxForBMP = tempCanvasForBMP.getContext('2d');
+         const tempCtxForBMP = tempCanvasForBMP.getContext('2d', { willReadFrequently: true });
          tempCtxForBMP.imageSmoothingEnabled = false;
          tempCtxForBMP.drawImage(finalCanvas, 0, 0, totalWidth, totalHeight, 0, 0, totalWidth, totalHeight);
 
@@ -395,7 +406,7 @@ async function createFullCanvasFromCropperSource() {
     const finalCanvas = document.createElement('canvas');
     finalCanvas.width = originalImageWidth;
     finalCanvas.height = originalImageHeight;
-    const finalCtx = finalCanvas.getContext('2d');
+    const finalCtx = finalCanvas.getContext('2d', { willReadFrequently: true });
     finalCtx.imageSmoothingEnabled = false;
 
     const img = new Image();
@@ -435,13 +446,22 @@ function addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight, sourc
     }
 }
 
+// Corregir las importaciones para usar la sintaxis correcta
+import medianCut from './medianCut.js';
+import kmeans from './kmeans.js';
+import popularityQuantization from './popularityQuantization.js';
+import neuQuant from './neuquant.js';
+import errorDiffusionDithering from './errorDiffusionDithering.js';
+import { nearestColorIndex } from './utils.js';
+
 function imageDataToBMP(imageData) {
-		let is8Bit = document.getElementById("8Bit").checked;
+    let is8Bit = document.getElementById("8Bit").checked;
+    const addNoise = document.getElementById("addNoise").checked;
     
     const width = imageData.width;
     const height = imageData.height;
     if (is8Bit) {
-    		let paletteMethod = document.getElementById("paletteMethod").value;
+        let paletteMethod = document.getElementById("paletteMethod").value;
         const rowBytes = width + (width % 4 ? 4 - width % 4 : 0);
         const fileSize = 54 + rowBytes * height + 1024;
         const colorTableSize = 256;
@@ -462,6 +482,7 @@ function imageDataToBMP(imageData) {
         dataView.setUint16(offset, 8, true); offset += 2;
         offset += 24;
 
+        // Aplicar cuantificación para obtener la paleta
         let colorTable;
         if (paletteMethod === "kmeans") {
           colorTable = kmeans(imageData, colorTableSize);
@@ -469,8 +490,13 @@ function imageDataToBMP(imageData) {
           colorTable = medianCut(imageData, colorTableSize);
         } else if (paletteMethod === "popularityQuantization") {
           colorTable = popularityQuantization(imageData, colorTableSize);
+        } else if (paletteMethod === "neuquant") {
+          colorTable = neuQuant(imageData, colorTableSize);
+        } else if (paletteMethod === "errorDiffusion") {
+          colorTable = errorDiffusionDithering(imageData, colorTableSize);
         }
 
+        // Escribir la tabla de colores en el buffer
         for (let i = 0; i < colorTable.length; i++) {
             dataView.setUint8(offset++, colorTable[i][2]);
             dataView.setUint8(offset++, colorTable[i][1]);
@@ -478,245 +504,106 @@ function imageDataToBMP(imageData) {
             dataView.setUint8(offset++, 0);
         }
 
+        // Crear una copia de los datos de la imagen para trabajar con ella
+        const imageDataCopy = new Uint8ClampedArray(imageData.data);
+        
+        // Si se seleccionó la opción de ruido, aplicarlo antes de cuantificar
+        if (addNoise) {
+            applyNoise(imageDataCopy, width, height, 20); // 20% de intensidad de ruido
+        }
+
+        // Procesar los píxeles y escribirlos en el buffer
+        for (let y = height - 1; y >= 0; y--) {
+            for (let x = 0; x < width; x++) {
+                let index = (y * width + x) * 4;
+                let r = imageDataCopy[index];
+                let g = imageDataCopy[index + 1];
+                let b = imageDataCopy[index + 2];
+                let colorIndex = nearestColorIndex(colorTable, r, g, b);
+                dataView.setUint8(offset++, colorIndex);
+            }
+            offset += rowBytes - width;
+        }
+    
+        return buffer;
+    } else {
+        // No se aplica ruido en el modo de 24 bits, ya que la opción es específica para 8 bits
+        const rowBytes = width * 3 + (width * 3 % 4 ? 4 - width * 3 % 4 : 0);
+        const fileSize = 54 + rowBytes * height;
+        let offset = 0;
+        let buffer = new ArrayBuffer(fileSize);
+        let dataView = new DataView(buffer);
+        dataView.setUint8(offset++, 0x42);
+        dataView.setUint8(offset++, 0x4D);
+        dataView.setUint32(offset, fileSize, true);
+        offset += 4;
+        offset += 4; // reserved
+        dataView.setUint32(offset, 54, true);
+        offset += 4;
+        dataView.setUint32(offset, 40, true);
+        offset += 4;
+        dataView.setInt32(offset, width, true);
+        offset += 4;
+        dataView.setInt32(offset, height, true);
+        offset += 4;
+        dataView.setUint16(offset, 1, true);
+        offset += 2;
+        dataView.setUint16(offset, 24, true);
+        offset += 2;
+        dataView.setUint32(offset, rowBytes, true);
+        offset += 4;
+
         for (let y = height -1; y >=0 ; y--) {
             for (let x = 0; x < width; x++) {
                 let index = (y * width + x) * 4;
                 let r = imageData.data[index];
                 let g = imageData.data[index +1];
                 let b = imageData.data[index +2];
-                let colorIndex = nearestColorIndex(colorTable, r, g, b);
-                dataView.setUint8(offset++, colorIndex);
+                dataView.setUint8(offset++, b);
+                dataView.setUint8(offset++, g);
+                dataView.setUint8(offset++, r);
             }
-            offset += rowBytes - width;
+            offset += rowBytes - width * 3;
+        }
+        
+        return buffer;
     }
-    
-    return buffer;
-    } else {
-    const rowBytes = width * 3 + (width * 3 % 4 ? 4 - width * 3 % 4 : 0);
-    const fileSize = 54 + rowBytes * height;
-    let offset = 0;
-    let buffer = new ArrayBuffer(fileSize);
-    let dataView = new DataView(buffer);
-    dataView.setUint8(offset++, 0x42);
-    dataView.setUint8(offset++, 0x4D);
-    dataView.setUint32(offset, fileSize, true);
-    offset += 4;
-    offset += 4; // reserved
-    dataView.setUint32(offset, 54, true);
-    offset += 4;
-    dataView.setUint32(offset, 40, true);
-    offset += 4;
-    dataView.setInt32(offset, width, true);
-    offset += 4;
-    dataView.setInt32(offset, height, true);
-    offset += 4;
-    dataView.setUint16(offset, 1, true);
-    offset += 2;
-    dataView.setUint16(offset, 24, true);
-    offset += 2;
-    dataView.setUint32(offset, rowBytes, true);
-    offset += 4;
+}
 
-    for (let y = height -1; y >=0 ; y--) {
+/**
+ * Aplica ruido aleatorio a los datos de imagen
+ * @param {Uint8ClampedArray} imageData - Array de datos de imagen
+ * @param {number} width - Ancho de la imagen
+ * @param {number} height - Alto de la imagen
+ * @param {number} intensity - Intensidad del ruido (0-100)
+ */
+function applyNoise(imageData, width, height, intensity) {
+    // Normalizar intensidad a un valor entre 0 y 1
+    const noiseLevel = Math.min(100, Math.max(0, intensity)) / 100;
+    
+    // Valor máximo de ruido (+-valor)
+    const maxNoise = Math.floor(255 * noiseLevel * 0.5);
+    
+    for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            let index = (y * width + x) * 4;
-            let r = imageData.data[index];
-            let g = imageData.data[index +1];
-            let b = imageData.data[index +2];
-            dataView.setUint8(offset++, b);
-            dataView.setUint8(offset++, g);
-            dataView.setUint8(offset++, r);
-        }
-        offset += rowBytes - width * 3;
-    }
-    
-    return buffer;
-}
-}
-
-function medianCut(imageData, colorCount) {
-    function ColorBox(pixels) {
-        this.pixels = pixels;
-        this.dimension = 0;
-        this.min = [255, 255, 255];
-        this.max = [0, 0, 0];
-        for (let i = 0; i < pixels.length; i += 4) {
-            for (let j = 0; j < 3; j++) {
-                if (pixels[i + j] < this.min[j]) {
-                    this.min[j] = pixels[i + j];
-                }
-                if (pixels[i + j] > this.max[j]) {
-                    this.max[j] = pixels[i + j];
-                }
-            }
-        }
-        let maxRange = 0;
-        for (let i = 0; i < 3; i++) {
-            if (this.max[i] - this.min[i] > maxRange) {
-                maxRange = this.max[i] - this.min[i];
-                this.dimension = i;
+            // Solo aplicar ruido a algunos píxeles (probabilidad basada en intensidad)
+            if (Math.random() < noiseLevel) {
+                const index = (y * width + x) * 4;
+                
+                // Generar valores de ruido para cada canal
+                const noiseR = Math.floor(Math.random() * 2 * maxNoise) - maxNoise;
+                const noiseG = Math.floor(Math.random() * 2 * maxNoise) - maxNoise;
+                const noiseB = Math.floor(Math.random() * 2 * maxNoise) - maxNoise;
+                
+                // Aplicar ruido y asegurar que los valores estén dentro del rango [0, 255]
+                imageData[index] = Math.max(0, Math.min(255, imageData[index] + noiseR));
+                imageData[index + 1] = Math.max(0, Math.min(255, imageData[index + 1] + noiseG));
+                imageData[index + 2] = Math.max(0, Math.min(255, imageData[index + 2] + noiseB));
+                // No modificar el canal alfa (index + 3)
             }
         }
     }
-
-    ColorBox.prototype.split = function() {
-        let pivot = Math.round((this.min[this.dimension] + this.max[this.dimension]) / 2);
-        let leftPixels = [];
-        let rightPixels = [];
-        for (let i = 0; i < this.pixels.length; i += 4) {
-            if (this.pixels[i + this.dimension] <= pivot) {
-                leftPixels.push(this.pixels[i], this.pixels[i +1], this.pixels[i +2], this.pixels[i +3]);
-            } else {
-                rightPixels.push(this.pixels[i], this.pixels[i +1], this.pixels[i +2], this.pixels[i +3]);
-            }
-        }
-        return [new ColorBox(leftPixels), new ColorBox(rightPixels)];
-    }
-
-    ColorBox.prototype.averageColor = function() {
-        let sum = [0, 0, 0];
-        for (let i = 0; i < this.pixels.length; i += 4) {
-            sum[0] += this.pixels[i];
-            sum[1] += this.pixels[i +1];
-            sum[2] += this.pixels[i +2];
-        }
-        let count = this.pixels.length / 4;
-        return [Math.round(sum[0] / count), Math.round(sum[1] / count), Math.round(sum[2] / count)];
-    }
-
-    let colorBoxes = [new ColorBox(imageData.data)];
-    while (colorBoxes.length < colorCount) {
-        colorBoxes.sort((a, b) => b.max[b.dimension] - b.min[b.dimension] - a.max[a.dimension] + a.min[a.dimension]);
-        let colorBox = colorBoxes.shift();
-        let splitBoxes = colorBox.split();
-        colorBoxes.push(splitBoxes[0], splitBoxes[1]);
-    }
-    return colorBoxes.map(colorBox => colorBox.averageColor());
 }
-    
-function nearestColorIndex(colorTable, r, g, b) {
-    let minDistance = Infinity;
-    let minIndex = -1;
-    for (let i = 0; i < colorTable.length; i++) {
-        let dr = r - colorTable[i][0];
-        let dg = g - colorTable[i][1];
-        let db = b - colorTable[i][2];
-        let distance = dr * dr + dg * dg + db * db;
-        if (distance < minDistance) {
-            minDistance = distance;
-            minIndex = i;
-        }
-    }
-    return minIndex;
-}
-
-function kmeans(imageData, k) {
-    // Obtener los datos de color de la imagen
-    let pixels = [];
-    for (let i = 0; i < imageData.data.length; i += 4) {
-        pixels.push([imageData.data[i], imageData.data[i + 1], imageData.data[i + 2]]);
-    }
-
-    // Inicializar los centroides de manera aleatoria
-    let centroids = [];
-    for (let i = 0; i < k; i++) {
-        centroids.push(pixels[Math.floor(Math.random() * pixels.length)]);
-    }
-
-    let assignments = new Array(pixels.length);
-    let oldAssignments = new Array(pixels.length);
-
-    // Iterar hasta que las asignaciones no cambien
-    while (!arraysEqual(assignments, oldAssignments)) {
-        // Asignar cada pixel al centroide más cercano
-        for (let i = 0; i < pixels.length; i++) {
-            let minDistance = Infinity;
-            for (let j = 0; j < centroids.length; j++) {
-                let distance = euclideanDistance(pixels[i], centroids[j]);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    assignments[i] = j;
-                }
-            }
-        }
-
-        // Recalcular los centroides como el promedio de los píxeles asignados a ellos
-        let sums = new Array(k).fill(0).map(() => [0, 0, 0]);
-        let counts = new Array(k).fill(0);
-        for (let i = 0; i < pixels.length; i++) {
-            let centroidIndex = assignments[i];
-            sums[centroidIndex][0] += pixels[i][0];
-            sums[centroidIndex][1] += pixels[i][1];
-            sums[centroidIndex][2] += pixels[i][2];
-            counts[centroidIndex]++;
-        }
-        for (let i = 0; i < centroids.length; i++) {
-            if (counts[i] > 0) {
-                centroids[i] = [
-                    Math.round(sums[i][0] / counts[i]),
-                    Math.round(sums[i][1] / counts[i]),
-                    Math.round(sums[i][2] / counts[i])
-                ];
-            }
-        }
-
-        // Guardar las asignaciones antiguas
-        oldAssignments = assignments.slice();
-    }
-
-    return centroids;
-}
-
-function euclideanDistance(a, b) {
-    let sum = 0;
-    for (let i = 0; i < a.length; i++) {
-        sum += (a[i] - b[i]) ** 2;
-    }
-    return Math.sqrt(sum);
-}
-
-function arraysEqual(a, b) {
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) return false;
-    }
-    return true;
-}
-
-function popularityQuantization(imageData, k) {
-    // Obtener los datos de color de la imagen
-    let pixels = [];
-    for (let i = 0; i < imageData.data.length; i += 4) {
-        pixels.push([imageData.data[i], imageData.data[i + 1], imageData.data[i + 2]]);
-    }
-
-    // Contar la frecuencia de cada color
-    let colorCounts = {};
-    for (let i = 0; i < pixels.length; i++) {
-        let color = pixels[i].join(",");
-        if (colorCounts[color]) {
-            colorCounts[color]++;
-        } else {
-            colorCounts[color] = 1;
-        }
-    }
-
-    // Ordenar los colores por frecuencia
-    let sortedColors = Object.keys(colorCounts).sort(function(a, b) {
-        return colorCounts[b] - colorCounts[a];
-    });
-
-    // Seleccionar los k colores más frecuentes
-    let colorTable = [];
-    for (let i = 0; i < k; i++) {
-        if (sortedColors[i]) {
-            colorTable.push(sortedColors[i].split(",").map(function(x) { return parseInt(x); }));
-        }
-    }
-
-    return colorTable;
-}
-
 
 document.getElementById('aspectRatio169').addEventListener('click', () => {
     cropper.setAspectRatio(16 / 9);
@@ -791,7 +678,7 @@ function drawCustomGuides() {
         return;
     }
 
-    const ctx = guideCanvasElement.getContext('2d');
+    const ctx = guideCanvasElement.getContext('2d', { willReadFrequently: true });
     const containerData = cropper.getContainerData(); // Dimensiones del contenedor del cropper
     const cropBoxData = cropper.getCropBoxData(); // Posición y tamaño del área de recorte
 
@@ -904,5 +791,33 @@ document.getElementById('reset').addEventListener('click', () => {
   } else {
     // Si no hay cropper activo o está oculto, resetear toda la UI
     resetUI();
+  }
+});
+
+// Inicialización del popup informativo - solo definir variables que aún no existen
+const methodInfoPopup = document.getElementById('methodInfoPopup');
+const closeInfoPopup = document.getElementById('closeInfoPopup');
+
+// Mostrar popup al hacer clic en el botón de información
+methodInfoBtn.addEventListener('click', () => {
+  methodInfoPopup.classList.remove('hidden');
+});
+
+// Cerrar popup al hacer clic en el botón de cerrar
+closeInfoPopup.addEventListener('click', () => {
+  methodInfoPopup.classList.add('hidden');
+});
+
+// Cerrar popup al hacer clic fuera del contenido
+methodInfoPopup.addEventListener('click', (e) => {
+  if (e.target === methodInfoPopup) {
+    methodInfoPopup.classList.add('hidden');
+  }
+});
+
+// Cerrar popup con la tecla Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !methodInfoPopup.classList.contains('hidden')) {
+    methodInfoPopup.classList.add('hidden');
   }
 });
