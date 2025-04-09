@@ -17,18 +17,24 @@ const bitContainer = document.getElementById('BitContainer');
 
 function handleOutputFormatChange() {
   const isTLoginFormat = outputFormatSelect.value === 't_login';
+  const is8BitChecked = checkbox8Bit.checked;
 
-  // Ocultar o mostrar el contenedor del checkbox8Bit y selectPaletteMethod
+  // Controlar visibilidad de BitContainer
   if (isTLoginFormat) {
-    bitContainer.style.display = 'none';
-    selectPaletteMethod.style.display = 'none';
+    bitContainer.classList.remove('visible');
   } else {
-    bitContainer.style.display = 'flex';
-    selectPaletteMethod.style.display = checkbox8Bit.checked ? 'block' : 'none';
+    bitContainer.classList.add('visible');
   }
 
-  // Deshabilitar o habilitar el selectPaletteMethod según el estado del checkbox8Bit
-  selectPaletteMethod.disabled = isTLoginFormat || !checkbox8Bit.checked;
+  // Controlar visibilidad y estado de selectPaletteMethod
+  // Solo debe ser visible si NO es t_login Y el checkbox 8Bit está marcado
+  if (!isTLoginFormat && is8BitChecked) {
+    selectPaletteMethod.classList.add('visible');
+    selectPaletteMethod.disabled = false;
+  } else {
+    selectPaletteMethod.classList.remove('visible');
+    selectPaletteMethod.disabled = true; // Deshabilitar si está oculto o si es t_login
+  }
 }
 
 outputFormatSelect.addEventListener('change', handleOutputFormatChange);
@@ -65,13 +71,17 @@ let originalImageBlob = null;
 let guideCanvas = null;
 
 checkbox8Bit.addEventListener("change", function() {
+    // Solo necesitamos actualizar el estado del selector de paleta aquí
+    // ya que handleOutputFormatChange se encarga de la visibilidad del contenedor
     if (this.checked) {
         selectPaletteMethod.removeAttribute("disabled");
-        selectPaletteMethod.style.display = "block";
+        selectPaletteMethod.classList.add('visible'); // Mostrar con transición
     } else {
         selectPaletteMethod.setAttribute("disabled", "");
-        selectPaletteMethod.style.display = "none";
+        selectPaletteMethod.classList.remove('visible'); // Ocultar con transición
     }
+    // No es necesario llamar a handleOutputFormatChange aquí,
+    // a menos que el formato dependa directamente del estado del checkbox
 });
 
 const imageInput = document.getElementById('imageInput');
@@ -559,7 +569,8 @@ function imageDataToBMP(imageData) {
     offset += 2;
     dataView.setUint16(offset, 24, true);
     offset += 2;
-    offset += 24;
+    dataView.setUint32(offset, rowBytes, true);
+    offset += 4;
 
     for (let y = height -1; y >=0 ; y--) {
         for (let x = 0; x < width; x++) {

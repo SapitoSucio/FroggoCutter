@@ -34,20 +34,20 @@
         <div class="mt-auto">
             <!-- Controles en una sola fila -->
             <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-                <!-- Panel de controles de formato (ahora a la izquierda) -->
-                <div class="bg-white dark:bg-gray-700 p-3 rounded-2xl shadow-md flex flex-wrap gap-3 items-center">
+                <!-- Panel de controles de formato: cambiado bg-white a bg-gray-800, añadido text-white, w-fit, flex-grow-0 -->
+                <div class="bg-gray-800 dark:bg-gray-800 text-white p-3 rounded-2xl shadow-md flex flex-wrap gap-3 items-center w-fit flex-grow-0">
                     <div class="font-medium">Format:</div>
-                    <select id="outputFormat" class="rounded-2xl border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300">
+                    <select id="outputFormat" class="rounded-2xl border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500">
                         <option value="t_login">t_login</option>
                         <option value="bmp">BMP</option>
                     </select>
                     
-                    <div id="BitContainer" class="hidden items-center gap-2 ml-2">
+                    <div id="BitContainer" class="items-center gap-2">
                         <label class="flex items-center space-x-2">
                             <input type="checkbox" id="8Bit" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
                             <span>8Bit</span>
                         </label>
-                        <select id="paletteMethod" disabled class="border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300">
+                        <select id="paletteMethod" disabled class="border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500">
                             <option value="medianCut">medianCut</option>
                             <option value="kmeans">kmeans</option>
                             <option value="popularityQuantization">popularityQuantization</option>

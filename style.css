@@ -28,24 +28,56 @@ body.dark-mode select option {
   color: #f2f2f2;
 }
 
-/* Panel de formato */
-body.dark-mode .bg-white.dark\:bg-gray-700 {
-  background-color: #374151;
-  color: #f2f2f2;
-}
-
-#BitContainer {
-  display: none;
-}
-
-#BitContainer.flex {
-  display: flex;
-  align-items: center;
-}
-
-/* Panel de formato - asegurarse de que se ve bien en todos los tamaños */
+/* Aplica width: fit-content al panel de formato */
 .bg-white.dark\:bg-gray-700 {
   flex-wrap: wrap;
+  width: fit-content; /* Hace que el panel se ajuste a su contenido */
+  /* Asegurar que no crezca innecesariamente */
+  flex-grow: 0;
+  /* Podrías necesitar ajustar la transición si quieres animar el ancho del panel */
+  /* transition: width 0.4s ease; */
+}
+
+/* Nuevos estilos para #BitContainer con transición (incluye horizontal) */
+#BitContainer {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  opacity: 0;
+  max-height: 0;
+  max-width: 0; /* Añadido para colapso horizontal */
+  padding: 0; /* Asegura cero padding en estado oculto */
+  margin: 0; /* Asegura cero margen en estado oculto */
+  border: none;
+  /* Añadir max-width, padding, margin a la transición */
+  transition: opacity 0.3s ease, max-height 0.4s ease, max-width 0.4s ease, padding 0.4s ease, margin 0.4s ease;
+}
+
+#BitContainer.visible {
+  opacity: 1;
+  max-height: 50px; /* Altura suficiente */
+  max-width: 500px; /* Ancho suficiente - ajusta si es necesario */
+  /* gap se encarga del espaciado interno, no necesitamos padding/margin aquí usualmente */
+  /* margin-left: 0.5rem; /* Ya no es necesario si usamos gap en el padre */
+}
+
+/* Nuevos estilos para #paletteMethod con transición (incluye horizontal) */
+#paletteMethod {
+  overflow: hidden;
+  opacity: 0;
+  max-height: 0;
+  max-width: 0; /* Añadido para colapso horizontal */
+  padding: 0; /* Asegura cero padding */
+  margin: 0; /* Asegura cero margen */
+  border: none;
+  /* Añadir max-width, padding, margin a la transición */
+  transition: opacity 0.3s ease, max-height 0.4s ease, max-width 0.4s ease, padding 0.4s ease, margin 0.4s ease;
+}
+
+#paletteMethod.visible {
+  opacity: 1;
+  max-height: 50px; /* Altura suficiente */
+  max-width: 300px; /* Ancho suficiente - ajusta si es necesario */
 }
 
 @media screen and (max-width: 800px) {
