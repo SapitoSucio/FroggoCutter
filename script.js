@@ -52,6 +52,9 @@ function handleOutputFormatChange() {
     selectPaletteMethod.classList.remove('visible');
     selectPaletteMethod.disabled = true; // Deshabilitar si está oculto o no es 8-bit BMP
   }
+
+  // Actualizar visibilidad del aviso de imagen grande
+  showLargeImageNoticeIfNeeded();
 }
 
 outputFormatSelect.addEventListener('change', handleOutputFormatChange);
@@ -86,6 +89,8 @@ let selectPaletteMethod = document.getElementById("paletteMethod");
 let originalImageBlob = null;
 // Variable global para el canvas de las guías personalizadas
 let guideCanvas = null;
+// Variable global para el temporizador del aviso de imagen grande
+let noticeHideTimer = null;
 
 checkbox8Bit.addEventListener("change", function() {
     // Only control the palette method visibility/state here
@@ -99,10 +104,8 @@ checkbox8Bit.addEventListener("change", function() {
         selectPaletteMethod.classList.remove('visible'); // Ocultar con transición
     }
 
-    // Call handleOutputFormatChange to ensure consistent state for all elements
-    // handleOutputFormatChange(); // Re-evaluate visibility of everything
-    // No, calling handleOutputFormatChange is redundant here as it doesn't depend on checkbox state for noise/info btn
-    // The only thing changing based *only* on the checkbox is the palette method selector.
+    // Actualizar visibilidad del aviso de imagen grande
+    showLargeImageNoticeIfNeeded();
 });
 
 const imageInput = document.getElementById('imageInput');
@@ -230,6 +233,10 @@ async function handleImageLoad(file) {
             tempImg.onerror = reject;
             tempImg.src = imgUrl; // Use the same URL, it's cached
         });
+
+        // Mostrar aviso si la imagen es grande y se cumplen condiciones
+        // (Lo hacemos ahora en una función separada para reusabilidad)
+        showLargeImageNoticeIfNeeded();
 
         // Set the image source and make it visible
         imageToCrop.src = imgUrl;
@@ -932,6 +939,16 @@ function resetUI() {
     guideCanvas = null; // Resetear la variable global
   }
 
+  // Ocultar el aviso de imagen grande y cancelar temporizador
+  const largeImageNotice = document.getElementById('largeImageNotice');
+  if (largeImageNotice) {
+      largeImageNotice.classList.add('hidden');
+  }
+  if (noticeHideTimer) {
+    clearTimeout(noticeHideTimer);
+    noticeHideTimer = null;
+  }
+
   // Limpiar el blob almacenado
   originalImageBlob = null;
 
@@ -1071,4 +1088,107 @@ function hslToRgb(h, s, l) {
     }
 
     return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+// --- Nueva función para manejar el aviso de imagen grande ---
+function showLargeImageNoticeIfNeeded() {
+  const largeImageNotice = document.getElementById('largeImageNotice');
+  const noticeProgressBar = document.getElementById('noticeProgressBar');
+  const noticeProgressContainer = largeImageNotice?.querySelector('.notice-progress-container'); // Get container
+
+  if (!largeImageNotice || !noticeProgressBar || !noticeProgressContainer) return; // Check container too
+
+  // --- Funciones internas para listeners ---
+  const pauseTimer = () => {
+    if (noticeHideTimer) {
+      clearTimeout(noticeHideTimer);
+      noticeHideTimer = null; // Important to clear the reference
+    }
+    // Stop progress bar animation by getting current computed width and setting percentage
+    const progressBarRect = noticeProgressBar.getBoundingClientRect();
+    const containerRect = noticeProgressContainer.getBoundingClientRect();
+    let currentWidthPercent = 0;
+    if (containerRect.width > 0) { // Avoid division by zero
+      currentWidthPercent = (progressBarRect.width / containerRect.width) * 100;
+    }
+    noticeProgressBar.style.transition = 'none';
+    noticeProgressBar.style.width = `${currentWidthPercent}%`; // Set percentage width
+  };
+
+  const startTimer = () => {
+    // Clear any previous timer just in case
+    if (noticeHideTimer) {
+      clearTimeout(noticeHideTimer);
+    }
+    // Calculate remaining time based on current width (assuming 5s total)
+    const currentWidthPercent = parseFloat(noticeProgressBar.style.width || '100');
+    const remainingTimeMs = (currentWidthPercent / 100) * 5000;
+
+    if (remainingTimeMs <= 0) {
+      largeImageNotice.classList.add('hidden');
+      noticeHideTimer = null;
+      largeImageNotice.removeEventListener('mouseenter', pauseTimer);
+      largeImageNotice.removeEventListener('mouseleave', startTimer);
+      return; // No need to start animation/timer
+    }
+
+    // Start animation from current width to 0% over remaining time
+    noticeProgressBar.style.transition = `width ${remainingTimeMs / 1000}s linear`;
+    noticeProgressBar.style.width = '0%';
+
+    // Set new timer to hide after remaining time
+    noticeHideTimer = setTimeout(() => {
+      largeImageNotice.classList.add('hidden');
+      noticeHideTimer = null; // Clear reference after execution
+      // Remove listeners when hidden by timer
+      largeImageNotice.removeEventListener('mouseenter', pauseTimer);
+      largeImageNotice.removeEventListener('mouseleave', startTimer);
+    }, remainingTimeMs);
+  };
+  // --- Fin Funciones internas ---
+
+  const isLargeImage = originalImageWidth > 2000 || originalImageHeight > 2000;
+  const isBmpFormat = outputFormatSelect.value === 'bmp';
+  const is8BitChecked = checkbox8Bit.checked;
+
+  // Condición para mostrar el aviso
+  const shouldShowNotice = isLargeImage && isBmpFormat && is8BitChecked;
+
+  // Limpiar temporizador y listeners anteriores si las condiciones cambian
+  if (!shouldShowNotice) {
+    if (noticeHideTimer) {
+        clearTimeout(noticeHideTimer);
+        noticeHideTimer = null;
+    }
+    largeImageNotice.classList.add('hidden'); // Hide immediately
+    // Always remove listeners if notice shouldn't be shown
+    largeImageNotice.removeEventListener('mouseenter', pauseTimer);
+    largeImageNotice.removeEventListener('mouseleave', startTimer);
+    return; // Exit if notice should not be shown
+  }
+
+  // Only proceed if the notice should be shown
+
+  // Check if already visible to prevent re-adding listeners/restarting animation
+  const isNoticeVisible = !largeImageNotice.classList.contains('hidden');
+
+  // Mostrar el aviso
+  largeImageNotice.classList.remove('hidden');
+
+  // Add listeners and start timer only if it wasn't visible before OR if the timer finished/was cancelled
+  if (!isNoticeVisible || !noticeHideTimer) {
+      // Reset progress bar visually before starting timer/animation
+      noticeProgressBar.style.transition = 'none';
+      noticeProgressBar.style.width = '100%';
+      void noticeProgressBar.offsetWidth; // Force reflow
+
+      // Remove potentially old listeners before adding new ones
+      largeImageNotice.removeEventListener('mouseenter', pauseTimer);
+      largeImageNotice.removeEventListener('mouseleave', startTimer);
+      // Add fresh listeners
+      largeImageNotice.addEventListener('mouseenter', pauseTimer);
+      largeImageNotice.addEventListener('mouseleave', startTimer);
+      // Start the timer and animation
+      startTimer();
+  }
 }

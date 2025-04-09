@@ -186,5 +186,15 @@
     <button id="dark-mode-btn" class="fixed bottom-5 right-8 px-5 py-2.5 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-all duration-300 transform hover:scale-105 z-50">
         <span class="btn-text">Dark Mode</span>
     </button>
+
+    <!-- Aviso para imágenes grandes (Movido aquí y con posición fija) -->
+    <div id="largeImageNotice" class="hidden fixed bottom-5 left-8 z-50 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md max-w-lg" role="alert">
+        <p class="font-bold">Large Image & 8-Bit BMP Selected!</p>
+        <p>Quantization for large images (>2000px) with 8-bit BMP is resource-intensive and may take up to 20 seconds. Please keep this tab open during processing. 🐸☝️</p>
+        <!-- Contenedor de la barra de progreso -->
+        <div class="notice-progress-container mt-2 h-1 bg-gray-300 dark:bg-gray-600 rounded-full overflow-hidden">
+            <div id="noticeProgressBar" class="h-full bg-yellow-500" style="width: 100%;"></div>
+        </div>
+    </div>
 </body>
 </html>

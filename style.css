@@ -13,6 +13,11 @@ body.dark-mode {
   color: #f2f2f2;
 }
 
+/* Estilos para la barra de progreso del aviso */
+#noticeProgressBar {
+  transition: width 5s linear; /* Animar el ancho durante 5 segundos */
+}
+
 /* Estilos para los selects en modo oscuro */
 select {
   color: inherit;
