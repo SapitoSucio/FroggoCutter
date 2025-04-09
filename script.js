@@ -59,6 +59,9 @@ darkModeBtn.addEventListener('click', () => {
 let checkbox8Bit = document.getElementById("8Bit");
 let selectPaletteMethod = document.getElementById("paletteMethod");
 
+// Variable global para almacenar el blob/archivo de imagen original
+let originalImageBlob = null;
+
 checkbox8Bit.addEventListener("change", function() {
     if (this.checked) {
         selectPaletteMethod.removeAttribute("disabled");
@@ -159,7 +162,16 @@ async function handleImageLoad(file) {
     return;
   }
 
+  // Guarda el blob/archivo original
+  originalImageBlob = file;
+  console.log("Blob/archivo original almacenado:", originalImageBlob);
+
   try {
+    // Revocar URL de objeto anterior si existe para liberar memoria
+    if (cropper && cropper.url) {
+        URL.revokeObjectURL(cropper.url);
+    }
+
     const imgUrl = URL.createObjectURL(file);
     
     // Transición suave del dropZone al container
@@ -194,97 +206,233 @@ async function handleImageLoad(file) {
   }
 }
 
-cropButton.addEventListener('click', () => {
+// Make the event listener async to handle image loading for the full selection case
+cropButton.addEventListener('click', async () => {
     const outputFormat = outputFormatSelect.value;
-    
-    // Obtener los datos actuales del recorte y la imagen
-    const cropData = cropper.getData(true); // Usar true para obtener valores enteros
-    const imageData = cropper.getImageData();
-    const canvasData = cropper.getCanvasData();
-    
-    // Calcular la proporción entre la imagen mostrada y la original
-    const scaleX = originalImageWidth / imageData.naturalWidth;
-    const scaleY = originalImageHeight / imageData.naturalHeight;
-    
-    // Verificar si el área seleccionada es aproximadamente toda la imagen
-    const isFullSelection = 
-      Math.abs(cropData.width - imageData.naturalWidth) < 10 && 
-      Math.abs(cropData.height - imageData.naturalHeight) < 10;
-    
-    // Mostrar información de debug
-    console.log(`Dimensiones originales: ${originalImageWidth}x${originalImageHeight}`);
-    console.log(`Dimensiones naturales de la imagen: ${imageData.naturalWidth}x${imageData.naturalHeight}`);
-    console.log(`Área seleccionada: ${cropData.width}x${cropData.height}`);
-    
-    // Determinar las dimensiones finales
-    let finalWidth, finalHeight;
-    
-    if (isFullSelection) {
-      // Si se seleccionó toda la imagen, usar las dimensiones originales exactas
-      console.log("Se detectó selección de imagen completa - usando dimensiones originales");
-      finalWidth = originalImageWidth;
-      finalHeight = originalImageHeight;
-    } else {
-      // Si se seleccionó un área específica, escalar proporcionalmente
-      finalWidth = Math.round(cropData.width * scaleX);
-      finalHeight = Math.round(cropData.height * scaleY);
-      console.log(`Dimensiones calculadas del recorte: ${finalWidth}x${finalHeight}`);
-    }
-    
-    // Opciones para generar el canvas final
-    const cropOptions = {
-      width: finalWidth,
-      height: finalHeight,
-      imageSmoothingEnabled: false // Evitar suavizado para mantener nitidez
-    };
-    
-    if (outputFormat === 't_login') {
-      // Generar la imagen y guardarla en formato JPEG
-      const croppedCanvas = cropper.getCroppedCanvas(cropOptions);
-      console.log(`Dimensiones finales del canvas: ${croppedCanvas.width}x${croppedCanvas.height}`);
-      
-      croppedCanvas.toBlob((blob) => {
-        saveAs(blob, 't_login.jpg');
-      }, 'image/jpeg', 1.0);
-    } else {
-      // Para BMP, generar la imagen y dividirla en secciones
-      const croppedCanvas = cropper.getCroppedCanvas(cropOptions);
-      console.log(`Dimensiones finales del canvas para BMP: ${croppedCanvas.width}x${croppedCanvas.height}`);
-      
-      croppedCanvas.toBlob((blob) => {
-        const zip = new JSZip();
-        const numRows = 3;
-        const numCols = 4;
-        const maxWidth = croppedCanvas.width;
-        const maxHeight = croppedCanvas.height;
-        const sectionWidth = Math.floor(maxWidth / numCols);
-        const sectionHeight = Math.floor(maxHeight / numRows);
-        const totalWidth = sectionWidth * numCols;
-        const totalHeight = sectionHeight * numRows;
-        
-        // Usar el canvas global para crear secciones
-        canvas.width = totalWidth;
-        canvas.height = totalHeight;
-        ctx.drawImage(croppedCanvas, 0, 0, totalWidth, totalHeight);
-        addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight);
-        zip.generateAsync({type: 'blob'}).then((content) => {
-          saveAs(content, 'squares.zip');
-        });
-      });
-    }
-  });
 
-function addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight) {
-  for (let j = 0; j < numRows; j++) {
-      for (let i = 0; i < numCols; i++) {
-          const imageData = ctx.getImageData(i * sectionWidth,
-              j * sectionHeight,
-              sectionWidth,
-              sectionHeight);
-          const bmpData = imageDataToBMP(imageData);
-          zip.file(`t_¹è°æ${j+1}-${i+1}.bmp`, bmpData);
-      }
-  }
+    if (!cropper) {
+        alert("Por favor, carga una imagen primero.");
+        return;
+    }
+
+    // Obtener los datos actuales del recorte y la imagen
+    const imageData = cropper.getImageData();
+    const preciseCropData = cropper.getData();
+    const tolerance = 2;
+
+    const coversDisplayedWidth = Math.abs(preciseCropData.width - imageData.naturalWidth) < tolerance;
+    const coversDisplayedHeight = Math.abs(preciseCropData.height - imageData.naturalHeight) < tolerance;
+    const startsNearOrigin = Math.abs(preciseCropData.x) < tolerance && Math.abs(preciseCropData.y) < tolerance;
+    const isFullSelection = coversDisplayedWidth && coversDisplayedHeight && startsNearOrigin;
+
+    console.log(`Dimensiones originales: ${originalImageWidth}x${originalImageHeight}`);
+    console.log(`Dimensiones naturales (cropper): ${imageData.naturalWidth}x${imageData.naturalHeight}`);
+    console.log(`Datos precisos recorte: x=${preciseCropData.x.toFixed(2)}, y=${preciseCropData.y.toFixed(2)}, width=${preciseCropData.width.toFixed(2)}, height=${preciseCropData.height.toFixed(2)}`);
+    console.log(`¿Es selección completa? ${isFullSelection}`);
+
+    // --- Lógica de Salida ---
+
+    if (outputFormat === 't_login') {
+        // --- Salida T_LOGIN (JPEG) ---
+        if (isFullSelection && originalImageBlob) {
+            // Selección completa Y tenemos el blob original: Guardar el original directamente
+            console.log("Guardando blob original directamente como t_login.jpg");
+            try {
+                saveAs(originalImageBlob, 't_login.jpg');
+            } catch (error) {
+                console.error("Error al guardar el blob original:", error);
+                alert("Hubo un problema al guardar el archivo original. Intentando método alternativo.");
+                // Fallback a método de canvas si saveAs falla con el blob original
+                generateJpegFromCanvas(imageData, preciseCropData, isFullSelection);
+            }
+        } else {
+            // Recorte parcial O no tenemos blob original: Generar desde canvas
+             console.log("Generando t_login.jpg desde el canvas (recorte parcial o fallback)");
+            generateJpegFromCanvas(imageData, preciseCropData, isFullSelection);
+        }
+
+    } else {
+        // --- Salida BMP --- (Siempre se genera desde canvas)
+        console.log("Generando salida BMP desde el canvas.");
+        generateBmpFromCanvas(imageData, preciseCropData, isFullSelection);
+    }
+});
+
+// --- Funciones auxiliares para generar salida ---
+
+async function generateJpegFromCanvas(imageData, preciseCropData, isFullSelection) {
+    let finalCanvas;
+
+    if (isFullSelection) {
+        // Recrea el canvas con dimensiones originales si es selección completa (fallback)
+        console.log("Fallback: Creando canvas con dimensiones originales para JPEG");
+        finalCanvas = await createFullCanvasFromCropperSource(); // Usamos función auxiliar
+        if (!finalCanvas) return; // Salir si falla la creación
+    } else {
+        // Calcula dimensiones para recorte parcial
+        const scaleX = originalImageWidth / imageData.naturalWidth;
+        const scaleY = originalImageHeight / imageData.naturalHeight;
+        const finalWidth = Math.round(preciseCropData.width * scaleX);
+        const finalHeight = Math.round(preciseCropData.height * scaleY);
+
+        console.log(`Calculadas dimensiones recorte JPEG: ${finalWidth}x${finalHeight}`);
+        const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: false };
+        finalCanvas = cropper.getCroppedCanvas(cropOptions);
+        console.log(`Dimensiones canvas recortado JPEG: ${finalCanvas.width}x${finalCanvas.height}`);
+        if (Math.abs(finalCanvas.width - finalWidth) > 1 || Math.abs(finalCanvas.height - finalHeight) > 1) {
+             console.warn(`Dimensiones del canvas recortado difieren ligeramente de las calculadas.`);
+        }
+    }
+
+    if (!finalCanvas) {
+        console.error("Error: No se generó el canvas final para JPEG.");
+        alert("Error procesando la imagen para JPEG.");
+        return;
+    }
+
+    finalCanvas.toBlob((blob) => {
+        if (blob) {
+            saveAs(blob, 't_login.jpg');
+        } else {
+            console.error("Fallo al generar blob para JPEG desde canvas.");
+            alert("Error guardando imagen como JPEG.");
+        }
+    }, 'image/jpeg', 1.0);
+}
+
+async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection) {
+    let finalCanvas;
+
+    if (isFullSelection) {
+        // Recrea el canvas con dimensiones originales si es selección completa
+        console.log("Creando canvas con dimensiones originales para BMP");
+        finalCanvas = await createFullCanvasFromCropperSource();
+        if (!finalCanvas) return;
+    } else {
+        // Calcula dimensiones para recorte parcial
+        const scaleX = originalImageWidth / imageData.naturalWidth;
+        const scaleY = originalImageHeight / imageData.naturalHeight;
+        const finalWidth = Math.round(preciseCropData.width * scaleX);
+        const finalHeight = Math.round(preciseCropData.height * scaleY);
+
+        console.log(`Calculadas dimensiones recorte BMP: ${finalWidth}x${finalHeight}`);
+        const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: false };
+        finalCanvas = cropper.getCroppedCanvas(cropOptions);
+        console.log(`Dimensiones canvas recortado BMP: ${finalCanvas.width}x${finalCanvas.height}`);
+         if (Math.abs(finalCanvas.width - finalWidth) > 1 || Math.abs(finalCanvas.height - finalHeight) > 1) {
+             console.warn(`Dimensiones del canvas recortado difieren ligeramente de las calculadas.`);
+        }
+    }
+
+     if (!finalCanvas) {
+        console.error("Error: No se generó el canvas final para BMP.");
+        alert("Error procesando la imagen para BMP.");
+        return;
+    }
+
+    // Lógica existente para procesar BMP desde finalCanvas
+    finalCanvas.toBlob((blob) => { // No especificar tipo aquí, imageDataToBMP lo hace
+         if (!blob) {
+             console.error("Fallo al generar blob para procesamiento BMP.");
+             alert("Error procesando imagen para formato BMP.");
+             return;
+         }
+         const zip = new JSZip();
+         const numRows = 3;
+         const numCols = 4;
+         const maxWidth = finalCanvas.width;
+         const maxHeight = finalCanvas.height;
+
+         if (maxWidth < numCols || maxHeight < numRows) {
+              console.error(`Imagen muy pequeña (${maxWidth}x${maxHeight}) para dividir en ${numCols}x${numRows} secciones.`);
+              alert(`Imagen muy pequeña (${maxWidth}x${maxHeight}) para dividir en ${numCols}x${numRows} secciones.`);
+              return;
+         }
+
+         const sectionWidth = Math.floor(maxWidth / numCols);
+         const sectionHeight = Math.floor(maxHeight / numRows);
+
+         if (sectionWidth <= 0 || sectionHeight <= 0) {
+              console.error(`Dimensiones de sección inválidas: ${sectionWidth}x${sectionHeight}`);
+              alert("Error calculando tamaño de secciones BMP.");
+              return;
+         }
+
+         const totalWidth = sectionWidth * numCols;
+         const totalHeight = sectionHeight * numRows;
+
+         const tempCanvasForBMP = document.createElement('canvas');
+         tempCanvasForBMP.width = totalWidth;
+         tempCanvasForBMP.height = totalHeight;
+         const tempCtxForBMP = tempCanvasForBMP.getContext('2d');
+         tempCtxForBMP.imageSmoothingEnabled = false;
+         tempCtxForBMP.drawImage(finalCanvas, 0, 0, totalWidth, totalHeight, 0, 0, totalWidth, totalHeight);
+
+         addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight, tempCtxForBMP);
+
+         zip.generateAsync({ type: 'blob' }).then((content) => {
+             saveAs(content, 'squares.zip');
+         }).catch(err => {
+             console.error("Error generando archivo zip:", err);
+             alert("Error creando el archivo zip.");
+         });
+     });
+}
+
+// Función auxiliar para crear el canvas de tamaño completo (usada en fallbacks y BMP)
+async function createFullCanvasFromCropperSource() {
+    if (!cropper || !cropper.url) {
+         console.error("No se puede crear canvas completo: cropper no inicializado o sin URL.");
+         alert("Error interno: No se encontró la fuente de la imagen.");
+         return null;
+    }
+
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = originalImageWidth;
+    finalCanvas.height = originalImageHeight;
+    const finalCtx = finalCanvas.getContext('2d');
+    finalCtx.imageSmoothingEnabled = false;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    try {
+        await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = (err) => reject(new Error(`Error cargando imagen desde ${cropper.url}: ${err.type || 'desconocido'}`));
+            img.src = cropper.url;
+        });
+        finalCtx.drawImage(img, 0, 0, originalImageWidth, originalImageHeight);
+        console.log(`Canvas completo creado: ${finalCanvas.width}x${finalCanvas.height}`);
+        return finalCanvas;
+    } catch (error) {
+        console.error("Error cargando imagen original para canvas completo:", error);
+        alert("Error procesando la imagen completa. Intenta recortar una sección más pequeña.");
+        return null;
+    }
+}
+
+
+// Modify addImageToZip to accept the source context
+function addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight, sourceCtx) {
+    for (let j = 0; j < numRows; j++) {
+        for (let i = 0; i < numCols; i++) {
+            try {
+                // Get image data from the provided source context
+                const imageData = sourceCtx.getImageData(
+                    i * sectionWidth,
+                    j * sectionHeight,
+                    sectionWidth,
+                    sectionHeight
+                );
+                const bmpData = imageDataToBMP(imageData);
+                zip.file(`t_¹è°æ${j+1}-${i+1}.bmp`, bmpData);
+            } catch (error) {
+                console.error(`Error processing section ${j+1}-${i+1}:`, error);
+                // Optionally skip this section or stop the whole process
+            }
+        }
+    }
 }
 
 function imageDataToBMP(imageData) {
@@ -637,9 +785,17 @@ document.addEventListener('paste', async (event) => {
 function resetUI() {
   // Si hay un cropper activo, destruirlo
   if (cropper) {
+    // Revocar URL de objeto antes de destruir
+    if (cropper.url) {
+        URL.revokeObjectURL(cropper.url);
+    }
     cropper.destroy();
     cropper = null;
   }
+
+  // Limpiar el blob almacenado
+  originalImageBlob = null;
+  console.log("Blob/archivo original limpiado.");
   
   // Limpiar el canvas
   ctx.clearRect(0, 0, canvas.width, canvas.height);
