@@ -128,10 +128,11 @@ body.dark-mode select option {
 }
 
 .cropper-point {
-  background-color: #60ed20!important;
-  height: 7px!important;
+  background-color: #51ff00!important;
+  height: 12px!important;
   opacity: 0.75;
-  width: 7px!important;
+  width: 12px!important;
+  border-radius: 50% !important;
 }
 
 .cropper-line {
