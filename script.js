@@ -65,27 +65,87 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const dropZone = document.getElementById('dropZone');
 const container = document.getElementById('container');
-
 const cropButton = document.getElementById('cropButton');
-// Create a new Cropper instance
-var cropper = new Cropper(canvas, {
-	viewMode: 1,
-	dragMode: "move",
-	toggleDragModeOnDblclick: true,
-	movable: true,
-	responsive: true,
-	autoCropArea: 1,
-	aspectRatio: 16 / 9,
-	minCropBoxWidth: 200,
-	minCropBoxHeight: 200,
 
-});
+// Eliminar la inicialización inicial del cropper
+let cropper = null;
 
-imageInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    const img = await loadImage(URL.createObjectURL(file));
-    cropper.replace(URL.createObjectURL(file));
-});
+function drawImageOnCanvas(img) {
+  // Obtener el tamaño del contenedor
+  const containerWidth = container.clientWidth * 0.9; // 90% del ancho del contenedor
+  const containerHeight = container.clientHeight;
+  
+  // Calcular las proporciones
+  let width = img.width;
+  let height = img.height;
+  
+  // Calcular el ratio para ajustar la imagen al contenedor
+  const ratioW = containerWidth / width;
+  const ratioH = containerHeight / height;
+  const ratio = Math.min(ratioW, ratioH);
+  
+  // Aplicar el ratio para mantener la proporción
+  width = width * ratio;
+  height = height * ratio;
+  
+  // Establecer el tamaño del canvas
+  canvas.width = width;
+  canvas.height = height;
+  
+  // Dibujar la imagen
+  ctx.drawImage(img, 0, 0, width, height);
+}
+
+function loadImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      drawImageOnCanvas(img);
+      // Si ya existe un cropper, destruirlo
+      if (cropper) {
+        cropper.destroy();
+      }
+      // Crear nuevo cropper
+      cropper = new Cropper(canvas, {
+        viewMode: 2, // Restringir el área de recorte al canvas
+        dragMode: 'move',
+        aspectRatio: 16 / 9,
+        autoCropArea: 1,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: true,
+      });
+      resolve(img);
+    };
+    img.src = src;
+  });
+}
+
+async function handleImageLoad(file) {
+  if (!file.type.startsWith('image/')) {
+    alert("Por favor, selecciona un archivo de imagen.");
+    return;
+  }
+
+  try {
+    const imgUrl = URL.createObjectURL(file);
+    
+    // Ocultar dropZone y mostrar container
+    dropZone.style.visibility = 'hidden';
+    container.classList.remove('hidden');
+    
+    // Cargar la imagen
+    await loadImage(imgUrl);
+    
+  } catch (error) {
+    console.error("Error al cargar la imagen:", error);
+    alert("Hubo un error al cargar la imagen. Por favor, inténtalo de nuevo.");
+  }
+}
 
 cropButton.addEventListener('click', () => {
     const outputFormat = outputFormatSelect.value;
@@ -118,12 +178,6 @@ cropButton.addEventListener('click', () => {
     }
   });
 
-function drawImageOnCanvas(img) {
-  canvas.width = img.width;
-  canvas.height = img.height;
-  ctx.drawImage(img, 0, 0);
-}
-
 function addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight) {
   for (let j = 0; j < numRows; j++) {
       for (let i = 0; i < numCols; i++) {
@@ -136,18 +190,6 @@ function addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight) {
       }
   }
 }
-
-function loadImage(src) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      drawImageOnCanvas(img);
-      resolve(img);
-    };
-    img.src = src;
-  });
-}
-
 
 function imageDataToBMP(imageData) {
 		let is8Bit = document.getElementById("8Bit").checked;
@@ -484,26 +526,6 @@ imageInput.addEventListener('change', async (e) => {
     await handleImageLoad(file);
   }
 });
-
-// Función para manejar la carga de la imagen (tanto desde drag and drop como desde input)
-async function handleImageLoad(file) {
-  if (!file.type.startsWith('image/')) {
-    alert("Por favor, selecciona un archivo de imagen.");
-    return;
-  }
-
-  try {
-    const imgUrl = URL.createObjectURL(file);
-    const img = await loadImage(imgUrl); 
-    cropper.replace(imgUrl);
-
-    dropZone.classList.add('hide');
-    container.classList.add('show');
-  } catch (error) {
-    console.error("Error al cargar la imagen:", error);
-    alert("Hubo un error al cargar la imagen. Por favor, inténtalo de nuevo.");
-  }
-}
 
 document.addEventListener('paste', async (event) => {
   const items = (event.clipboardData || event.originalEvent.clipboardData).items;

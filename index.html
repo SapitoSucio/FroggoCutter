@@ -9,16 +9,16 @@
     <link rel="manifest" href="site.webmanifest">
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script defer src="https://unpkg.com/cropperjs/dist/cropper.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script type="module" src="script.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/cropperjs/dist/cropper.css">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="h-full flex flex-col min-h-screen bg-gray-100 text-gray-900">
-    <div class="container mx-auto px-4 rounded-lg py-8">
+    <div class="container mx-auto px-4 rounded-lg py-8 flex flex-col h-full">
         <div class="flex flex-wrap gap-4 justify-center items-center mb-6">
-            <select id="outputFormat" class=" rounded-2xl border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300">
+            <select id="outputFormat" class="rounded-2xl border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300">
                 <option value="t_login">t_login</option>
                 <option value="bmp">BMP</option>
             </select>
@@ -36,35 +36,39 @@
             </div>
         </div>
 
-        <input type="file" id="imageInput" accept="image/*" class="hidden">
-        
-        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-2xl w-4/5 h-[70vh] mx-auto flex items-center justify-center text-lg text-gray-500 cursor-pointer hover:border-green-500 transition-colors duration-300">
-            Click here, drag and drop, or Ctrl+V to paste an image
+        <div class="relative h-[70vh] mb-6">
+            <input type="file" id="imageInput" accept="image/*" class="hidden">
+            
+            <div id="dropZone" class="absolute inset-0 border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center text-lg text-gray-500 cursor-pointer hover:border-green-500 transition-colors duration-300">
+                Click here, drag and drop, or Ctrl+V to paste an image
+            </div>
+
+            <div id="container" class="absolute inset-0 hidden flex items-center justify-center">
+                <div class="max-w-[90%] max-h-full">
+                    <canvas id="canvas" class="rounded-2xl"></canvas>
+                </div>
+            </div>
         </div>
 
-        <div id="container" class="max-h-[77vh] hidden mx-auto max-w-4xl">
-            <canvas id="canvas" class="rounded-2xl"></canvas>
-        </div>
+        <div class="flex flex-col gap-4 mt-auto">
+            <div class="flex flex-wrap justify-center gap-4">
+                <button id="aspectRatio169" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300" title="Best aspect ratio for Ragnarok clients in fullscreen">16:9</button>
+                <button id="aspectRatio43" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">4:3</button>
+                <button id="aspectRatio11" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">1:1</button>
+                <button id="aspectRatioFree" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Free</button>
+                <button id="reset" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Reset</button>
+            </div>
 
-        <div class="flex flex-wrap justify-center gap-4 mt-6">
-            <button id="aspectRatio169" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300" title="Best aspect ratio for Ragnarok clients in fullscreen">16:9</button>
-            <button id="aspectRatio43" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">4:3</button>
-            <button id="aspectRatio11" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">1:1</button>
-            <button id="aspectRatioFree" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Free</button>
-            <button id="reset" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Reset</button>
-        </div>
-
-        <div class="flex justify-center mt-6">
-            <button id="cropButton" class="relative px-6 py-3 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">
-                Crop & Download
-            </button>
+            <div class="flex justify-center">
+                <button id="cropButton" class="px-6 py-3 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">
+                    Crop & Download
+                </button>
+            </div>
         </div>
     </div>
 
     <button id="dark-mode-btn" class="fixed bottom-5 right-8 px-5 py-2.5 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-all duration-300 transform hover:scale-105 z-50">
         <span class="btn-text">Dark Mode</span>
     </button>
-
-    
 </body>
 </html>
