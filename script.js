@@ -71,22 +71,22 @@ const cropButton = document.getElementById('cropButton');
 let cropper = null;
 
 function drawImageOnCanvas(img) {
-  // Obtener el tamaño del contenedor
-  const containerWidth = container.clientWidth * 0.9; // 90% del ancho del contenedor
-  const containerHeight = container.clientHeight;
+  // Obtener el tamaño del viewport disponible
+  const maxWidth = Math.min(800, window.innerWidth * 0.8);
+  const maxHeight = Math.min(600, window.innerHeight * 0.6);
   
   // Calcular las proporciones
   let width = img.width;
   let height = img.height;
   
-  // Calcular el ratio para ajustar la imagen al contenedor
-  const ratioW = containerWidth / width;
-  const ratioH = containerHeight / height;
+  // Redimensionar manteniendo la proporción
+  const ratioW = maxWidth / width;
+  const ratioH = maxHeight / height;
   const ratio = Math.min(ratioW, ratioH);
   
   // Aplicar el ratio para mantener la proporción
-  width = width * ratio;
-  height = height * ratio;
+  width = Math.floor(width * ratio);
+  height = Math.floor(height * ratio);
   
   // Establecer el tamaño del canvas
   canvas.width = width;
@@ -136,7 +136,13 @@ async function handleImageLoad(file) {
     
     // Ocultar dropZone y mostrar container
     dropZone.style.visibility = 'hidden';
+    dropZone.style.display = 'none';
+    dropZone.style.pointerEvents = 'none';
+    
     container.classList.remove('hidden');
+    container.style.display = 'flex';
+    container.style.alignItems = 'center';
+    container.style.justifyContent = 'center';
     
     // Cargar la imagen
     await loadImage(imgUrl);
@@ -489,10 +495,6 @@ document.getElementById('aspectRatioFree').addEventListener('click', () => {
     cropper.setAspectRatio(NaN);
 });
 
-document.getElementById('reset').addEventListener('click', () => {
-    cropper.reset();
-});
-
 // Drag and Drop Functionality
 dropZone.addEventListener('dragover', (e) => {
   e.preventDefault();
@@ -537,5 +539,35 @@ document.addEventListener('paste', async (event) => {
       await handleImageLoad(blob);
       break;
     }
+  }
+});
+
+// Añadir la función resetUI después de la función handleImageLoad
+function resetUI() {
+  // Si hay un cropper activo, destruirlo
+  if (cropper) {
+    cropper.destroy();
+    cropper = null;
+  }
+  
+  // Limpiar el canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Ocultar el container
+  container.classList.add('hidden');
+  container.style.display = 'none';
+  
+  // Mostrar el dropZone
+  dropZone.style.visibility = 'visible';
+  dropZone.style.display = 'flex';
+  dropZone.style.pointerEvents = 'auto';
+}
+
+// Reemplazar el event listener existente para el botón reset
+document.getElementById('reset').addEventListener('click', () => {
+  if (cropper) {
+    cropper.reset();
+  } else {
+    resetUI();
   }
 });

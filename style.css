@@ -31,28 +31,37 @@ body.dark-mode select option {
 .cropper-container {
   box-shadow: 0 0 10px #00000080;
   transition: box-shadow 0.3s ease;
+  max-width: 100% !important;
+  max-height: 65vh !important;
+  pointer-events: auto !important;
 }
 
 .cropper-container:hover {
   box-shadow: 0 0 15px #000000cc;
 }
 
+.cropper-view-box,
+.cropper-face {
+  pointer-events: auto !important;
+}
 
 #cropButton::before {
   content: url('https://images.weserv.nl/?url=https://i.imgur.com/IwUzsCd.png?v=4&default=https://i.imgur.com/IwUzsCd.png&maxage=7d&l=9');
   position: absolute;
-  top: -18px;
+  bottom: 45px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-30%) scale(0.9);
   opacity: 0;
   transition: all 0.2s ease-in-out;
+  pointer-events: none;
+  z-index: 5;
 }
 
 #cropButton:hover::before {
-  top: -20px;
+  bottom: 40px;
   opacity: 1;
+  transform: translateX(-30%) scale(1);
 }
-
 
 .cropper-point {
   background-color: #60ed20!important;
@@ -65,14 +74,11 @@ body.dark-mode select option {
   background-color: rgb(179, 255, 0)!important;
 }
 
-
-
 @media screen and (max-width: 800px) {
   #canvas, #container {
       height: 38em;
   }
 }
-
 
 /* Layout styles */
 #dropZone.hide {
@@ -82,12 +88,29 @@ body.dark-mode select option {
   display: block;
 }
 
-#canvas {
+#container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  height: 100%;
+}
+
+#container > div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+#canvas {
+  max-width: 100%;
+  max-height: 65vh;
+  width: auto;
   height: auto;
-  min-height: 45em;
-  max-height: 60em;
   display: block;
+  margin: 0 auto;
 }
 
 /* Agregar border radius al contenedor principal del cropper */
@@ -97,5 +120,12 @@ body.dark-mode select option {
 .cropper-modal {
   border-radius: 12px;
   overflow: hidden;
+}
+
+/* Asegurar que el z-index y pointer-events estén correctamente configurados */
+#dropZone {
+  z-index: 10;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
