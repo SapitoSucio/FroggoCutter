@@ -139,18 +139,13 @@ body.dark-mode select option {
   background-color: rgb(179, 255, 0)!important;
 }
 
-@media screen and (max-width: 800px) {
-  #canvas, #container {
-      height: 38em;
-  }
-}
-
 /* Layout styles */
 #dropZone {
   z-index: 10;
   pointer-events: auto;
   cursor: pointer;
   transition: all 0.3s ease-in-out;
+  max-height: 100%;
 }
 
 #dropZone.fade-out {
@@ -188,13 +183,15 @@ body.dark-mode select option {
   max-height: 100%;
 }
 
-#canvas {
+/* Target the image directly for max size constraints within the container */
+#imageToCrop {
+  display: block; /* Ensure it behaves like a block element */
   max-width: 100%;
-  max-height: 85vh;
+  max-height: 85vh; /* Match cropper-container max-height */
+  /* width/height auto are implicit for img, but being explicit is fine */
   width: auto;
   height: auto;
-  display: block;
-  margin: 0 auto;
+  margin: 0 auto; /* Center if container is larger */
 }
 
 /* Agregar border radius al contenedor principal del cropper */

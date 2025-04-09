@@ -97,8 +97,11 @@ checkbox8Bit.addEventListener("change", function() {
 });
 
 const imageInput = document.getElementById('imageInput');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d', { willReadFrequently: true });
+// Get the new image element instead of canvas
+const imageToCrop = document.getElementById('imageToCrop');
+// Remove canvas and context
+// const canvas = document.getElementById('canvas');
+// const ctx = canvas.getContext('2d', { willReadFrequently: true });
 const dropZone = document.getElementById('dropZone');
 const container = document.getElementById('container');
 const cropButton = document.getElementById('cropButton');
@@ -108,7 +111,8 @@ let cropper = null;
 let originalImageWidth = 0;
 let originalImageHeight = 0;
 
-// Renombrar y modificar loadImage para solo cargar y dibujar
+// Remove loadImageAndDraw and drawImageOnCanvas as Cropper will handle the image directly
+/*
 function loadImageAndDraw(src) {
     // Devolver una promesa que se resuelve cuando la imagen está cargada Y dibujada
     return new Promise((resolve, reject) => { // Añadir reject para manejo de errores
@@ -138,27 +142,28 @@ function drawImageOnCanvas(img) {
   // Usar dimensiones del contenedor para calcular el máximo tamaño (100%)
   const maxWidth = containerRect.width; // Eliminado * 0.95
   const maxHeight = containerRect.height; // Eliminado * 0.95
-  
+
   // Calcular las proporciones
   let width = img.width;
   let height = img.height;
-  
+
   // Redimensionar manteniendo la proporción
   const ratioW = maxWidth / width;
   const ratioH = maxHeight / height;
   const ratio = Math.min(ratioW, ratioH);
-  
+
   // Aplicar el ratio para mantener la proporción
   width = Math.floor(width * ratio);
   height = Math.floor(height * ratio);
-  
+
   // Establecer el tamaño del canvas
   canvas.width = width;
   canvas.height = height;
-  
+
   // Dibujar la imagen
   ctx.drawImage(img, 0, 0, width, height);
 }
+*/
 
 async function handleImageLoad(file) {
     if (!file.type.startsWith('image/')) {
@@ -173,14 +178,13 @@ async function handleImageLoad(file) {
 
     // 2. Mostrar el container pero con opacidad 0 (para la transición fade-in)
     container.classList.remove('hidden');
-    container.style.display = 'flex';
-    container.style.alignItems = 'center';
-    container.style.justifyContent = 'center';
-    container.style.width = '100%';
-    container.style.height = '100%';
+    container.style.display = 'flex'; // Keep as flex for centering
+    // container.style.alignItems = 'center'; // Already in CSS for #container
+    // container.style.justifyContent = 'center'; // Already in CSS for #container
+    // container.style.width = '100%'; // Already in CSS
+    // container.style.height = '100%'; // Already in CSS
 
     // 3. Programar el final de la transición del dropZone y el inicio del fade-in del container
-    //    Esto sigue igual, la transición visual no cambia.
     setTimeout(() => {
       // 4. Ocultar completamente el dropZone
       dropZone.style.visibility = 'hidden';
@@ -195,22 +199,36 @@ async function handleImageLoad(file) {
     // --- Carga y dibujo de imagen (ASÍNCRONO) ---
     try {
         // Revocar URL de objeto anterior si existe para liberar memoria
-        if (cropper && cropper.url) {
-            URL.revokeObjectURL(cropper.url);
-            // Destruir cropper anterior ANTES de cargar nueva imagen si existe
-             if (cropper) {
-                 cropper.destroy();
-                 cropper = null; // Asegurar que se limpia la referencia
-             }
+        // Destruir cropper anterior ANTES de cargar nueva imagen si existe
+        if (cropper) {
+            if (cropper.url) {
+                URL.revokeObjectURL(cropper.url);
+            }
+            cropper.destroy();
+            cropper = null; // Asegurar que se limpia la referencia
         }
 
         const imgUrl = URL.createObjectURL(file);
 
-        // Esperar a que la imagen se cargue y se dibuje en el canvas
-        await loadImageAndDraw(imgUrl); // Usa la nueva función
+        // Esperar a que la imagen *metadatos* se carguen para obtener dimensiones originales
+        await new Promise((resolve, reject) => {
+            const tempImg = new Image();
+            tempImg.onload = () => {
+                originalImageWidth = tempImg.naturalWidth;
+                originalImageHeight = tempImg.naturalHeight;
+                resolve();
+            };
+            tempImg.onerror = reject;
+            tempImg.src = imgUrl; // Use the same URL, it's cached
+        });
 
-        // --- Inicializar Cropper DESPUÉS de dibujar ---
-        cropper = new Cropper(canvas, {
+        // Set the image source and make it visible
+        imageToCrop.src = imgUrl;
+        imageToCrop.classList.remove('hidden');
+
+
+        // --- Inicializar Cropper DESPUÉS de establecer el src del <img> ---
+        cropper = new Cropper(imageToCrop, {
             viewMode: 1,
             dragMode: 'move',
             aspectRatio: NaN,
@@ -226,8 +244,8 @@ async function handleImageLoad(file) {
                 // Crear y añadir canvas para guías personalizadas AQUÍ
                 // Asegurarse de que solo se cree una vez
                 if (!document.getElementById('guideCanvas')) {
-                    // Intentar encontrar el contenedor que Cropper crea
-                    const cropperContainer = canvas.parentElement.querySelector('.cropper-container');
+                    // Intentar encontrar el contenedor que Cropper crea (ahora padre de imageToCrop)
+                    const cropperContainer = imageToCrop.parentElement.querySelector('.cropper-container');
                     if (cropperContainer) {
                         guideCanvas = document.createElement('canvas');
                         guideCanvas.id = 'guideCanvas'; // ID para fácil referencia/eliminación
@@ -245,13 +263,15 @@ async function handleImageLoad(file) {
                         drawCustomGuides();
 
                         // Añadir listener para redibujar en cambios futuros (drag, resize)
-                        canvas.addEventListener('crop', drawCustomGuides);
+                        // Listen on the image element itself for crop events
+                        imageToCrop.addEventListener('crop', drawCustomGuides);
                     }
                 }
             } // Fin del 'ready' callback
         });
 
     } catch (error) {
+        console.error("Error handling image load:", error); // Added detailed logging
         resetUI();
     }
 }
@@ -716,7 +736,7 @@ function drawCustomGuides() {
     // Usa el ID para obtener el elemento canvas de las guías
     const guideCanvasElement = document.getElementById('guideCanvas');
     // Salir si el cropper o el canvas de guías no están listos
-    if (!cropper || !guideCanvasElement || !cropper.ready) {
+    if (!cropper || !guideCanvasElement || !imageToCrop || !cropper.ready) {
         return;
     }
 
@@ -778,8 +798,10 @@ function resetUI() {
   // Si hay un cropper activo, destruirlo
   if (cropper) {
     // Remover listener de guías ANTES de destruir el cropper
-    // Asegurarse que el listener se añadió al elemento correcto ('canvas')
-    canvas.removeEventListener('crop', drawCustomGuides);
+    // Listen on imageToCrop now
+    if (imageToCrop) {
+      imageToCrop.removeEventListener('crop', drawCustomGuides);
+    }
 
     // Revocar URL de objeto antes de destruir
     if (cropper.url) {
@@ -798,23 +820,26 @@ function resetUI() {
 
   // Limpiar el blob almacenado
   originalImageBlob = null;
-  
-  // Limpiar el canvas
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
+
+  // Limpiar y ocultar la imagen
+  if (imageToCrop) {
+    imageToCrop.src = '';
+    imageToCrop.classList.add('hidden');
+  }
+
   // Ocultar el container con transición
   container.classList.remove('fade-in');
-  
+
   setTimeout(() => {
     // Ocultar completamente el container
     container.classList.add('hidden');
     container.style.display = 'none';
-    
+
     // Mostrar el dropZone con transición
     dropZone.style.visibility = 'visible';
     dropZone.style.display = 'flex';
     dropZone.style.pointerEvents = 'auto';
-    
+
     // Eliminar la clase fade-out después de mostrar
     setTimeout(() => {
       dropZone.classList.remove('fade-out');
