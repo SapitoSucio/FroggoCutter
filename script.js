@@ -84,6 +84,31 @@ let cropper = null;
 let originalImageWidth = 0;
 let originalImageHeight = 0;
 
+// Renombrar y modificar loadImage para solo cargar y dibujar
+function loadImageAndDraw(src) {
+    // Devolver una promesa que se resuelve cuando la imagen está cargada Y dibujada
+    return new Promise((resolve, reject) => { // Añadir reject para manejo de errores
+        const img = new Image();
+        img.onload = () => {
+            // Guardar las dimensiones originales
+            originalImageWidth = img.naturalWidth;
+            originalImageHeight = img.naturalHeight;
+            console.log(`Imagen cargada con dimensiones: ${originalImageWidth}x${originalImageHeight}`);
+
+            // Dibujar la imagen escalada en el canvas
+            drawImageOnCanvas(img);
+
+            // Resolver la promesa una vez dibujada
+            resolve(img); // Se puede resolver con la imagen si es necesario después
+        };
+        img.onerror = (err) => { // Manejar errores de carga de imagen
+            console.error("Error al cargar la fuente de la imagen:", err);
+            reject(new Error("No se pudo cargar la imagen desde la fuente proporcionada."));
+        };
+        img.src = src;
+    });
+}
+
 function drawImageOnCanvas(img) {
   // Calcular el espacio disponible basado en el contenedor
   const parentElement = document.querySelector('.flex-1.relative');
@@ -114,96 +139,87 @@ function drawImageOnCanvas(img) {
   ctx.drawImage(img, 0, 0, width, height);
 }
 
-function loadImage(src) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      // Guardar las dimensiones originales
-      originalImageWidth = img.naturalWidth;
-      originalImageHeight = img.naturalHeight;
-      console.log(`Cargando imagen con dimensiones: ${originalImageWidth}x${originalImageHeight}`);
-      
-      drawImageOnCanvas(img);
-      
-      // Si ya existe un cropper, destruirlo
-      if (cropper) {
-        cropper.destroy();
-      }
-      
-      // Crear nuevo cropper con opciones simplificadas
-      cropper = new Cropper(canvas, {
-        viewMode: 1,
-        dragMode: 'move',
-        aspectRatio: NaN, // Sin relación de aspecto fija
-        autoCropArea: 1, // Cubrir toda la imagen inicialmente
-        restore: false,
-        guides: true,
-        center: true,
-        highlight: false,
-        cropBoxMovable: true,
-        cropBoxResizable: true,
-        toggleDragModeOnDblclick: true,
-        ready: function() {
-          // Este evento ocurre cuando el cropper está completamente inicializado
-          // No hacemos nada especial aquí, solo dejamos que cropper maneje el estado inicial
-          console.log("Cropper inicializado correctamente");
-        }
-      });
-      
-      resolve(img);
-    };
-    img.src = src;
-  });
-}
-
 async function handleImageLoad(file) {
-  if (!file.type.startsWith('image/')) {
-    alert("Por favor, selecciona un archivo de imagen.");
-    return;
-  }
-
-  // Guarda el blob/archivo original
-  originalImageBlob = file;
-  console.log("Blob/archivo original almacenado:", originalImageBlob);
-
-  try {
-    // Revocar URL de objeto anterior si existe para liberar memoria
-    if (cropper && cropper.url) {
-        URL.revokeObjectURL(cropper.url);
+    if (!file.type.startsWith('image/')) {
+        alert("Por favor, selecciona un archivo de imagen.");
+        return;
     }
 
-    const imgUrl = URL.createObjectURL(file);
-    
-    // Transición suave del dropZone al container
+    // Guarda el blob/archivo original
+    originalImageBlob = file;
+    console.log("Blob/archivo original almacenado:", originalImageBlob);
+
+    // --- Iniciar transición visual INMEDIATAMENTE ---
     // 1. Agregar clase para desvanecer el dropZone
     dropZone.classList.add('fade-out');
-    
-    // 2. Mostrar el container pero con opacidad 0
+
+    // 2. Mostrar el container pero con opacidad 0 (para la transición fade-in)
     container.classList.remove('hidden');
     container.style.display = 'flex';
     container.style.alignItems = 'center';
     container.style.justifyContent = 'center';
     container.style.width = '100%';
     container.style.height = '100%';
-    
-    // 3. Esperar un momento para la transición
+
+    // 3. Programar el final de la transición del dropZone y el inicio del fade-in del container
+    //    Esto sigue igual, la transición visual no cambia.
     setTimeout(() => {
       // 4. Ocultar completamente el dropZone
       dropZone.style.visibility = 'hidden';
       dropZone.style.display = 'none';
       dropZone.style.pointerEvents = 'none';
-      
+
       // 5. Mostrar el container con una transición de opacidad
       container.classList.add('fade-in');
-    }, 300);
-    
-    // Cargar la imagen
-    await loadImage(imgUrl);
-    
-  } catch (error) {
-    console.error("Error al cargar la imagen:", error);
-    alert("Hubo un error al cargar la imagen. Por favor, inténtalo de nuevo.");
-  }
+    }, 300); // 300ms es la duración de tu transición CSS (ajusta si es diferente)
+
+
+    // --- Carga y dibujo de imagen (ASÍNCRONO) ---
+    try {
+        // Revocar URL de objeto anterior si existe para liberar memoria
+        if (cropper && cropper.url) {
+            URL.revokeObjectURL(cropper.url);
+            // Destruir cropper anterior ANTES de cargar nueva imagen si existe
+             if (cropper) {
+                 cropper.destroy();
+                 cropper = null; // Asegurar que se limpia la referencia
+                 console.log("Cropper anterior destruido.");
+             }
+        }
+
+        const imgUrl = URL.createObjectURL(file);
+
+        // Esperar a que la imagen se cargue y se dibuje en el canvas
+        await loadImageAndDraw(imgUrl); // Usa la nueva función
+        console.log("Imagen dibujada en el canvas.");
+
+        // --- Inicializar Cropper DESPUÉS de dibujar ---
+        // No es necesario esperar a que termine la transición visual.
+        // El cropper se inicializará sobre la imagen ya dibujada.
+        cropper = new Cropper(canvas, {
+            viewMode: 1,
+            dragMode: 'move',
+            aspectRatio: NaN,
+            autoCropArea: 1,
+            restore: false,
+            guides: true,
+            center: true,
+            highlight: false,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            toggleDragModeOnDblclick: true,
+            // No necesitamos el 'ready' aquí si no hacemos nada especial
+            // ready: function() { console.log("Cropper inicializado correctamente"); }
+        });
+        console.log("Nueva instancia de Cropper creada.");
+
+
+    } catch (error) {
+        console.error("Error durante la carga/procesamiento de la imagen:", error);
+        alert(`Hubo un error: ${error.message || "Por favor, inténtalo de nuevo."}`);
+        // Resetear UI en caso de error grave
+        resetUI();
+    }
 }
 
 // Make the event listener async to handle image loading for the full selection case
