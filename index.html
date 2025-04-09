@@ -43,6 +43,16 @@
                     </select>
                     
                     <div id="BitContainer" class="items-center gap-2">
+                        
+                        <!-- Checkbox para Noise -->
+                        <label class="flex items-center space-x-2 ml-2" id="noiseCheckboxContainer" title="Adding noise can improve the quality of BMP images displayed on the client login screen.">
+                            <input type="checkbox" id="addNoise" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                            <span>Noise</span>
+                            <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg w-48 text-center pointer-events-none z-10">
+                                Adding noise can improve the quality of BMP images displayed on the client login screen.
+                            </div>
+                        </label>
+                        
                         <label class="flex items-center space-x-2 group relative" title="Produces smaller and more compressed images">
                             <input type="checkbox" id="8Bit" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
                             <span>8Bit</span>
@@ -50,16 +60,6 @@
                                 Produces smaller and more compressed images
                             </div>
                         </label>
-                        
-                        <!-- Checkbox para Noise -->
-                        <label class="flex items-center space-x-2 ml-2 hidden" id="noiseCheckboxContainer" title="Adding noise can significantly improve the quality of quantized images">
-                            <input type="checkbox" id="addNoise" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
-                            <span>Noise</span>
-                            <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg w-48 text-center pointer-events-none z-10">
-                                Adding noise to a quantized image can improve overall quality
-                            </div>
-                        </label>
-                        
                         <div class="relative flex items-center">
                             <select id="paletteMethod" disabled class="border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500">
                                 <option value="medianCut">Median Cut</option>
@@ -70,7 +70,7 @@
                             </select>
                             
                             <!-- Ícono de información con popup (ahora a la derecha del selector) -->
-                            <button id="methodInfoBtn" class="ml-2 text-green-500 focus:outline-none hidden" aria-label="Method information">
+                            <button id="methodInfoBtn" class="ml-2 text-green-500 focus:outline-none" aria-label="Method information">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                                 </svg>

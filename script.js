@@ -14,26 +14,39 @@ if (isDarkMode) {
 
 const outputFormatSelect = document.getElementById('outputFormat');
 const bitContainer = document.getElementById('BitContainer');
+const noiseCheckboxContainer = document.getElementById('noiseCheckboxContainer');
+const methodInfoBtn = document.getElementById('methodInfoBtn');
 
 function handleOutputFormatChange() {
   const isTLoginFormat = outputFormatSelect.value === 't_login';
+  const isBmpFormat = !isTLoginFormat; // BMP is the only other option
   const is8BitChecked = checkbox8Bit.checked;
 
-  // Controlar visibilidad de BitContainer
-  if (isTLoginFormat) {
-    bitContainer.classList.remove('visible');
-  } else {
+  // Controlar visibilidad de BitContainer (Shown only for BMP)
+  if (isBmpFormat) {
     bitContainer.classList.add('visible');
+  } else {
+    bitContainer.classList.remove('visible');
+  }
+
+  // Controlar visibilidad de Noise Checkbox and Method Info Button (Shown only for BMP)
+  if (isBmpFormat) {
+    noiseCheckboxContainer.classList.remove('hidden'); // Use remove/add hidden class
+    methodInfoBtn.classList.remove('hidden');
+  } else {
+    noiseCheckboxContainer.classList.add('hidden');
+    methodInfoBtn.classList.add('hidden');
+    addNoiseCheckbox.checked = false; // Uncheck noise if switching away from BMP
   }
 
   // Controlar visibilidad y estado de selectPaletteMethod
-  // Solo debe ser visible si NO es t_login Y el checkbox 8Bit está marcado
-  if (!isTLoginFormat && is8BitChecked) {
+  // Solo debe ser visible y habilitado si es BMP Y el checkbox 8Bit está marcado
+  if (isBmpFormat && is8BitChecked) {
     selectPaletteMethod.classList.add('visible');
     selectPaletteMethod.disabled = false;
   } else {
     selectPaletteMethod.classList.remove('visible');
-    selectPaletteMethod.disabled = true; // Deshabilitar si está oculto o si es t_login
+    selectPaletteMethod.disabled = true; // Deshabilitar si está oculto o no es 8-bit BMP
   }
 }
 
@@ -64,8 +77,6 @@ darkModeBtn.addEventListener('click', () => {
 
 let checkbox8Bit = document.getElementById("8Bit");
 let selectPaletteMethod = document.getElementById("paletteMethod");
-let methodInfoBtn = document.getElementById("methodInfoBtn");
-let noiseCheckboxContainer = document.getElementById("noiseCheckboxContainer");
 let addNoiseCheckbox = document.getElementById("addNoise");
 
 // Variable global para almacenar el blob/archivo de imagen original
@@ -74,26 +85,21 @@ let originalImageBlob = null;
 let guideCanvas = null;
 
 checkbox8Bit.addEventListener("change", function() {
-    // Solo necesitamos actualizar el estado del selector de paleta aquí
-    // ya que handleOutputFormatChange se encarga de la visibilidad del contenedor
-    if (this.checked) {
+    // Only control the palette method visibility/state here
+    const isBmpFormat = outputFormatSelect.value === 'bmp';
+
+    if (this.checked && isBmpFormat) { // Enable/show palette only if 8bit AND BMP
         selectPaletteMethod.removeAttribute("disabled");
         selectPaletteMethod.classList.add('visible'); // Mostrar con transición
-        // Mostrar el botón de información de métodos
-        methodInfoBtn.classList.remove('hidden');
-        // Mostrar el contenedor del checkbox de Noise
-        noiseCheckboxContainer.classList.remove('hidden');
     } else {
         selectPaletteMethod.setAttribute("disabled", "");
         selectPaletteMethod.classList.remove('visible'); // Ocultar con transición
-        // Ocultar el botón de información de métodos
-        methodInfoBtn.classList.add('hidden');
-        // Ocultar y desmarcar el checkbox de Noise
-        noiseCheckboxContainer.classList.add('hidden');
-        addNoiseCheckbox.checked = false;
     }
-    // No es necesario llamar a handleOutputFormatChange aquí,
-    // a menos que el formato dependa directamente del estado del checkbox
+
+    // Call handleOutputFormatChange to ensure consistent state for all elements
+    // handleOutputFormatChange(); // Re-evaluate visibility of everything
+    // No, calling handleOutputFormatChange is redundant here as it doesn't depend on checkbox state for noise/info btn
+    // The only thing changing based *only* on the checkbox is the palette method selector.
 });
 
 const imageInput = document.getElementById('imageInput');
@@ -568,7 +574,11 @@ function imageDataToBMP(imageData) {
     
         return buffer;
     } else {
-        // No se aplica ruido en el modo de 24 bits, ya que la opción es específica para 8 bits
+        // Apply noise if checked, even for 24-bit BMP
+        const addNoise = document.getElementById("addNoise").checked;
+        const width = imageData.width;
+        const height = imageData.height;
+
         const rowBytes = width * 3 + (width * 3 % 4 ? 4 - width * 3 % 4 : 0);
         const fileSize = 54 + rowBytes * height;
         let offset = 0;
@@ -608,6 +618,11 @@ function imageDataToBMP(imageData) {
         // Crear copia para trabajar con los datos
         const imageDataCopy = new Uint8ClampedArray(imageData.data);
         
+        // Apply noise if the checkbox is checked, before writing pixels
+        if (addNoise) {
+            applyNoise(imageDataCopy, width, height, 20); // Apply 20% noise
+        }
+        
         // Escribir los datos de los píxeles con el relleno correcto
         const padding = rowBytes - (width * 3);
         
@@ -643,26 +658,38 @@ function applyNoise(imageData, width, height, intensity) {
     // Normalizar intensidad a un valor entre 0 y 1
     const noiseLevel = Math.min(100, Math.max(0, intensity)) / 100;
     
-    // Valor máximo de ruido (+-valor)
-    const maxNoise = Math.floor(255 * noiseLevel * 0.5);
+    // Maximum variation in Lightness (L) based on noiseLevel
+    // Noise will range from -maxLightnessNoise to +maxLightnessNoise
+    const maxLightnessNoise = noiseLevel * 0.5; // e.g., 20% intensity -> noiseLevel 0.2 -> max +/- 0.1 variation in L
     
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            // Solo aplicar ruido a algunos píxeles (probabilidad basada en intensidad)
-            if (Math.random() < noiseLevel) {
-                const index = (y * width + x) * 4;
-                
-                // Generar valores de ruido para cada canal
-                const noiseR = Math.floor(Math.random() * 2 * maxNoise) - maxNoise;
-                const noiseG = Math.floor(Math.random() * 2 * maxNoise) - maxNoise;
-                const noiseB = Math.floor(Math.random() * 2 * maxNoise) - maxNoise;
-                
-                // Aplicar ruido y asegurar que los valores estén dentro del rango [0, 255]
-                imageData[index] = Math.max(0, Math.min(255, imageData[index] + noiseR));
-                imageData[index + 1] = Math.max(0, Math.min(255, imageData[index + 1] + noiseG));
-                imageData[index + 2] = Math.max(0, Math.min(255, imageData[index + 2] + noiseB));
-                // No modificar el canal alfa (index + 3)
-            }
+            // Apply noise to every pixel, but vary the amount
+            const index = (y * width + x) * 4;
+            
+            // Get original RGB
+            let r = imageData[index];
+            let g = imageData[index + 1];
+            let b = imageData[index + 2];
+            
+            // Convert to HSL
+            let [h, s, l] = rgbToHsl(r, g, b);
+            
+            // Calculate noise amount for this pixel (-max to +max)
+            // Using Math.random() * 2 - 1 gives a range from -1 to 1
+            const lightnessNoise = (Math.random() * 2 - 1) * maxLightnessNoise;
+            
+            // Apply noise to Lightness, clamping between 0 and 1
+            let noisyL = Math.max(0, Math.min(1, l + lightnessNoise));
+            
+            // Convert back to RGB (keeping original H and S)
+            let [newR, newG, newB] = hslToRgb(h, s, noisyL);
+            
+            // Update image data
+            imageData[index] = newR;
+            imageData[index + 1] = newG;
+            imageData[index + 2] = newB;
+            // No modificar el canal alfa (index + 3)
         }
     }
 }
@@ -888,3 +915,73 @@ document.addEventListener('keydown', (e) => {
     methodInfoPopup.classList.add('hidden');
   }
 });
+
+// --- HSL Conversion Helper Functions ---
+
+/**
+ * Converts an RGB color value to HSL. Conversion formula
+ * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
+ * Assumes r, g, and b are contained in the set [0, 255] and
+ * returns h, s, and l in the set [0, 1].
+ *
+ * @param   Number  r       The red color value
+ * @param   Number  g       The green color value
+ * @param   Number  b       The blue color value
+ * @return  Array           The HSL representation
+ */
+function rgbToHsl(r, g, b) {
+    r /= 255, g /= 255, b /= 255;
+    let max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max == min) {
+        h = s = 0; // achromatic
+    } else {
+        let d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch(max){
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+
+    return [h, s, l];
+}
+
+/**
+ * Converts an HSL color value to RGB. Conversion formula
+ * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
+ * Assumes h, s, and l are contained in the set [0, 1] and
+ * returns r, g, and b in the set [0, 255].
+ *
+ * @param   Number  h       The hue
+ * @param   Number  s       The saturation
+ * @param   Number  l       The lightness
+ * @return  Array           The RGB representation
+ */
+function hslToRgb(h, s, l) {
+    let r, g, b;
+
+    if (s == 0) {
+        r = g = b = l; // achromatic
+    } else {
+        function hue2rgb(p, q, t) {
+            if(t < 0) t += 1;
+            if(t > 1) t -= 1;
+            if(t < 1/6) return p + (q - p) * 6 * t;
+            if(t < 1/2) return q;
+            if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        }
+
+        let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        let p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
