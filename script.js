@@ -250,6 +250,9 @@ async function handleImageLoad(file) {
             cropBoxResizable: true,
             toggleDragModeOnDblclick: true,
             ready: function () { // Usar el evento ready oficial de Cropper.js
+                // Habilitar el botón de recorte ahora que el cropper está listo
+                cropButton.disabled = false;
+
                 // Crear y añadir canvas para guías personalizadas AQUÍ
                 // Asegurarse de que solo se cree una vez
                 if (!document.getElementById('guideCanvas')) {
@@ -287,6 +290,24 @@ async function handleImageLoad(file) {
 
 // Make the event listener async to handle image loading for the full selection case
 cropButton.addEventListener('click', async () => {
+    // Get text elements
+    const cropText = document.getElementById('cropText');
+    const loadingText = document.getElementById('loadingText');
+
+    // --- Start Animation & Disable Button ---
+    cropButton.disabled = true; // Disable button immediately
+    cropButton.classList.remove('bg-gray-800', 'hover:bg-green-600'); // Remove base colors
+    cropButton.classList.add('bg-green-700', 'animate-pulse', 'loading'); // Add loading styles and class
+    cropText.classList.add('-translate-y-full', 'opacity-0');
+    loadingText.classList.remove('translate-y-full', 'opacity-0');
+    loadingText.classList.add('translate-y-0', 'opacity-100'); // Ensure opacity is 1
+
+    // Allow a tiny moment for the browser to render the style changes before heavy task
+    // Using await Promise.resolve() or setTimeout(0) can sometimes help ensure rendering,
+    // but often just applying classes before sync code is enough.
+    // await new Promise(resolve => setTimeout(resolve, 50)); // Optional small delay
+
+    // --- Existing Logic ---
     const outputFormat = outputFormatSelect.value;
 
     if (!cropper) {
@@ -330,101 +351,164 @@ cropButton.addEventListener('click', async () => {
 
 async function generateJpegFromCanvas(imageData, preciseCropData, isFullSelection) {
     let finalCanvas;
-
-    if (isFullSelection) {
-        // Recrea el canvas con dimensiones originales si es selección completa (fallback)
-        finalCanvas = await createFullCanvasFromCropperSource(); // Usamos función auxiliar
-        if (!finalCanvas) return; // Salir si falla la creación
-    } else {
-        // Calcula dimensiones para recorte parcial
-        const scaleX = originalImageWidth / imageData.naturalWidth;
-        const scaleY = originalImageHeight / imageData.naturalHeight;
-        const finalWidth = Math.round(preciseCropData.width * scaleX);
-        const finalHeight = Math.round(preciseCropData.height * scaleY);
-
-        const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: false };
-        finalCanvas = cropper.getCroppedCanvas(cropOptions);
-        if (Math.abs(finalCanvas.width - finalWidth) > 1 || Math.abs(finalCanvas.height - finalHeight) > 1) {
-             console.warn(`Dimensiones del canvas recortado difieren ligeramente de las calculadas.`);
+    try {
+        if (isFullSelection) {
+            finalCanvas = await createFullCanvasFromCropperSource();
+        } else {
+            const scaleX = originalImageWidth / imageData.naturalWidth;
+            const scaleY = originalImageHeight / imageData.naturalHeight;
+            const finalWidth = Math.round(preciseCropData.width * scaleX);
+            const finalHeight = Math.round(preciseCropData.height * scaleY);
+            const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: false };
+            finalCanvas = cropper.getCroppedCanvas(cropOptions);
+            if (Math.abs(finalCanvas.width - finalWidth) > 1 || Math.abs(finalCanvas.height - finalHeight) > 1) {
+                console.warn(`Dimensiones del canvas recortado difieren ligeramente de las calculadas.`);
+            }
         }
-    }
 
-    if (!finalCanvas) {
-        return;
-    }
-
-    finalCanvas.toBlob((blob) => {
-        if (blob) {
-            saveAs(blob, 't_login.jpg');
+        if (!finalCanvas) {
+            throw new Error("Failed to create final canvas for JPEG.");
         }
-    }, 'image/jpeg', 1.0);
+
+        finalCanvas.toBlob((blob) => {
+            // This callback happens *after* the main function might have continued
+            try {
+                if (blob) {
+                    saveAs(blob, 't_login.jpg');
+                } else {
+                    console.warn("JPEG blob creation failed.");
+                }
+            } catch (saveError) {
+                console.error("Error saving JPEG blob:", saveError);
+            } finally {
+                // Reset button state and animation after blob processing/saving attempt
+                cropButton.disabled = false;
+                cropButton.classList.remove('bg-green-700', 'animate-pulse', 'loading'); // Remove loading styles and class
+                cropButton.classList.add('bg-gray-800', 'hover:bg-green-600'); // Add base colors back
+                // Reset animation
+                const cropText = document.getElementById('cropText');
+                const loadingText = document.getElementById('loadingText');
+                if (cropText && loadingText) {
+                    cropText.classList.remove('-translate-y-full', 'opacity-0');
+                    loadingText.classList.remove('translate-y-0', 'opacity-100');
+                    loadingText.classList.add('translate-y-full', 'opacity-0');
+                }
+                // cropButton.classList.remove('processing'); // Remove if not used
+            }
+        }, 'image/jpeg', 1.0);
+
+    } catch (error) {
+        console.error("Error in generateJpegFromCanvas:", error);
+        // Reset button state and animation on error during canvas creation
+        cropButton.disabled = false;
+        cropButton.classList.remove('bg-green-700', 'animate-pulse', 'loading'); // Remove loading styles and class
+        cropButton.classList.add('bg-gray-800', 'hover:bg-green-600'); // Add base colors back
+        // Reset animation
+        const cropText = document.getElementById('cropText');
+        const loadingText = document.getElementById('loadingText');
+        if (cropText && loadingText) {
+            cropText.classList.remove('-translate-y-full', 'opacity-0');
+            loadingText.classList.remove('translate-y-0', 'opacity-100');
+            loadingText.classList.add('translate-y-full', 'opacity-0');
+        }
+        // cropButton.classList.remove('processing'); // Remove if not used
+    }
 }
 
 async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection) {
     let finalCanvas;
-
-    if (isFullSelection) {
-        // Recrea el canvas con dimensiones originales si es selección completa
-        finalCanvas = await createFullCanvasFromCropperSource();
-        if (!finalCanvas) return;
-    } else {
-        // Calcula dimensiones para recorte parcial
-        const scaleX = originalImageWidth / imageData.naturalWidth;
-        const scaleY = originalImageHeight / imageData.naturalHeight;
-        const finalWidth = Math.round(preciseCropData.width * scaleX);
-        const finalHeight = Math.round(preciseCropData.height * scaleY);
-
-        const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: true };
-        finalCanvas = cropper.getCroppedCanvas(cropOptions);
-         if (Math.abs(finalCanvas.width - finalWidth) > 1 || Math.abs(finalCanvas.height - finalHeight) > 1) {
-             console.warn(`Dimensiones del canvas recortado difieren ligeramente de las calculadas.`);
+    try {
+        if (isFullSelection) {
+            finalCanvas = await createFullCanvasFromCropperSource();
+        } else {
+            const scaleX = originalImageWidth / imageData.naturalWidth;
+            const scaleY = originalImageHeight / imageData.naturalHeight;
+            const finalWidth = Math.round(preciseCropData.width * scaleX);
+            const finalHeight = Math.round(preciseCropData.height * scaleY);
+            const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: true };
+            finalCanvas = cropper.getCroppedCanvas(cropOptions);
+            if (Math.abs(finalCanvas.width - finalWidth) > 1 || Math.abs(finalCanvas.height - finalHeight) > 1) {
+                console.warn(`Dimensiones del canvas recortado difieren ligeramente de las calculadas.`);
+            }
         }
+
+        if (!finalCanvas) {
+            throw new Error("Failed to create final canvas for BMP.");
+        }
+
+        // Lógica existente para procesar BMP desde finalCanvas
+        finalCanvas.toBlob(async (blob) => { // Callback is already async
+            try {
+                if (!blob) {
+                    throw new Error("BMP blob creation failed.");
+                }
+                const zip = new JSZip();
+                const numRows = 3;
+                const numCols = 4;
+                const maxWidth = finalCanvas.width;
+                const maxHeight = finalCanvas.height;
+
+                if (maxWidth < numCols || maxHeight < numRows) {
+                     throw new Error("Canvas too small for 4x3 grid.");
+                }
+
+                const sectionWidth = Math.floor(maxWidth / numCols);
+                const sectionHeight = Math.floor(maxHeight / numRows);
+
+                if (sectionWidth <= 0 || sectionHeight <= 0) {
+                     throw new Error("Invalid section dimensions for BMP grid.");
+                }
+
+                const totalWidth = sectionWidth * numCols;
+                const totalHeight = sectionHeight * numRows;
+
+                const tempCanvasForBMP = document.createElement('canvas');
+                tempCanvasForBMP.width = totalWidth;
+                tempCanvasForBMP.height = totalHeight;
+                const tempCtxForBMP = tempCanvasForBMP.getContext('2d', { willReadFrequently: true });
+                tempCtxForBMP.imageSmoothingEnabled = true;
+                tempCtxForBMP.imageSmoothingQuality = 'high';
+                tempCtxForBMP.drawImage(finalCanvas, 0, 0, totalWidth, totalHeight, 0, 0, totalWidth, totalHeight);
+
+                addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight, tempCtxForBMP);
+
+                const content = await zip.generateAsync({ type: 'blob' });
+                saveAs(content, 'squares.zip');
+            } catch (err) {
+                console.error("Error during BMP processing/zipping/saving:", err);
+            } finally {
+                // Reset button state and animation after all async operations inside blob callback are done
+                cropButton.disabled = false;
+                cropButton.classList.remove('bg-green-700', 'animate-pulse', 'loading'); // Remove loading styles and class
+                cropButton.classList.add('bg-gray-800', 'hover:bg-green-600'); // Add base colors back
+                // Reset animation
+                const cropText = document.getElementById('cropText');
+                const loadingText = document.getElementById('loadingText');
+                if (cropText && loadingText) {
+                    cropText.classList.remove('-translate-y-full', 'opacity-0');
+                    loadingText.classList.remove('translate-y-0', 'opacity-100');
+                    loadingText.classList.add('translate-y-full', 'opacity-0');
+                }
+                // cropButton.classList.remove('processing'); // Remove if not used
+            }
+        }); // End of toBlob callback
+
+    } catch (error) {
+        console.error("Error in generateBmpFromCanvas:", error);
+        // Reset button state and animation on error during canvas creation
+        cropButton.disabled = false;
+        cropButton.classList.remove('bg-green-700', 'animate-pulse', 'loading'); // Remove loading styles and class
+        cropButton.classList.add('bg-gray-800', 'hover:bg-green-600'); // Add base colors back
+        // Reset animation
+        const cropText = document.getElementById('cropText');
+        const loadingText = document.getElementById('loadingText');
+        if (cropText && loadingText) {
+            cropText.classList.remove('-translate-y-full', 'opacity-0');
+            loadingText.classList.remove('translate-y-0', 'opacity-100');
+            loadingText.classList.add('translate-y-full', 'opacity-0');
+        }
+        // cropButton.classList.remove('processing'); // Remove if not used
     }
-
-     if (!finalCanvas) {
-        return;
-    }
-
-    // Lógica existente para procesar BMP desde finalCanvas
-    finalCanvas.toBlob((blob) => { // No especificar tipo aquí, imageDataToBMP lo hace
-         if (!blob) {
-             return;
-         }
-         const zip = new JSZip();
-         const numRows = 3;
-         const numCols = 4;
-         const maxWidth = finalCanvas.width;
-         const maxHeight = finalCanvas.height;
-
-         if (maxWidth < numCols || maxHeight < numRows) {
-              return;
-         }
-
-         const sectionWidth = Math.floor(maxWidth / numCols);
-         const sectionHeight = Math.floor(maxHeight / numRows);
-
-         if (sectionWidth <= 0 || sectionHeight <= 0) {
-              return;
-         }
-
-         const totalWidth = sectionWidth * numCols;
-         const totalHeight = sectionHeight * numRows;
-
-         const tempCanvasForBMP = document.createElement('canvas');
-         tempCanvasForBMP.width = totalWidth;
-         tempCanvasForBMP.height = totalHeight;
-         const tempCtxForBMP = tempCanvasForBMP.getContext('2d', { willReadFrequently: true });
-         tempCtxForBMP.imageSmoothingEnabled = true;
-         tempCtxForBMP.imageSmoothingQuality = 'high';
-         tempCtxForBMP.drawImage(finalCanvas, 0, 0, totalWidth, totalHeight, 0, 0, totalWidth, totalHeight);
-
-         addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight, tempCtxForBMP);
-
-         zip.generateAsync({ type: 'blob' }).then((content) => {
-             saveAs(content, 'squares.zip');
-         }).catch(err => {
-         });
-     });
 }
 
 // Función auxiliar para crear el canvas de tamaño completo (usada en fallbacks y BMP)

@@ -150,6 +150,14 @@ body.dark-mode select option {
   transform: translateX(-30%) scale(1);
 }
 
+/* Make frog visible when button has 'loading' class */
+#cropButton.loading::before {
+  bottom: 40px; /* Match hover state */
+  opacity: 1;   /* Match hover state */
+  transform: translateX(-30%) scale(1); /* Match hover state */
+  /* No transition needed here, it should appear instantly with the loading state */
+}
+
 .cropper-point {
   background-color: #51ff00!important;
   height: 12px!important;
