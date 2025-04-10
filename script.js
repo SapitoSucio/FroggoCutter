@@ -518,38 +518,44 @@ async function createFullCanvasFromCropperSource() {
 
 // Modify addImageToZip to accept the source context
 function addImageToZip(zip, numRows, numCols, sectionWidth, sectionHeight, sourceCtx) {
+    const totalWidth = sourceCtx.canvas.width;
+    const totalHeight = sourceCtx.canvas.height;
+    let fullImageData = null;
+    let is8Bit = document.getElementById("8Bit").checked;
+    const noiseIntensity = parseInt(document.getElementById("noiseLevelSelect").value, 10) || 0;
+
+    try {
+        // Get image data ONCE for the entire area if needed (8bit or 24bit with noise)
+        // For 24bit without noise, we might optimize further later, but this is a good step.
+        // Update: Getting it always simplifies the logic for now. Optimization target: direct context reading.
+        // Let's stick to getting it once as the primary optimization vs per-section.
+        fullImageData = sourceCtx.getImageData(0, 0, totalWidth, totalHeight);
+    } catch (error) {
+        console.error("Error getting full image data:", error);
+        // Handle error appropriately, maybe stop processing
+        throw new Error("Could not read image data for BMP generation.");
+    }
+
+
     for (let j = 0; j < numRows; j++) {
         for (let i = 0; i < numCols; i++) {
             try {
-                // Create temporary canvas for section processing to maintain quality
-                const sectionCanvas = document.createElement('canvas');
-                sectionCanvas.width = sectionWidth;
-                sectionCanvas.height = sectionHeight;
-                const sectionCtx = sectionCanvas.getContext('2d', { willReadFrequently: true });
-                
-                // Enable image smoothing for better quality
-                sectionCtx.imageSmoothingEnabled = true;
-                sectionCtx.imageSmoothingQuality = 'high';
-                
-                // Extract the section from the source context
                 const sx = i * sectionWidth;
                 const sy = j * sectionHeight;
-                
-                // Draw this section to the section canvas
-                sectionCtx.drawImage(
-                    sourceCtx.canvas,
-                    sx, sy, sectionWidth, sectionHeight,
-                    0, 0, sectionWidth, sectionHeight
+
+                // Pass the relevant info to imageDataToBMP
+                const bmpData = imageDataToBMP(
+                    fullImageData, // Source data
+                    totalWidth,    // Source width
+                    sx, sy,        // Top-left corner of section in source
+                    sectionWidth,  // Section dimensions
+                    sectionHeight
                 );
-                
-                // Get image data from the section canvas
-                const imageData = sectionCtx.getImageData(0, 0, sectionWidth, sectionHeight);
-                
-                // Convert to BMP
-                const bmpData = imageDataToBMP(imageData);
                 zip.file(`t_¹è°æ${j+1}-${i+1}.bmp`, bmpData);
+
             } catch (error) {
                 console.error(`Error processing section [${j+1}-${i+1}]:`, error);
+                // Optionally skip this section or re-throw
             }
         }
     }
@@ -563,195 +569,253 @@ import neuQuant from './neuquant.js';
 import errorDiffusionDithering from './errorDiffusionDithering.js';
 import { nearestColorIndex } from './utils.js';
 
-function imageDataToBMP(imageData) {
+// Modify imageDataToBMP to work with a sub-rectangle of a larger ImageData
+function imageDataToBMP(sourceImageData, sourceTotalWidth, sx, sy, width, height) {
     let is8Bit = document.getElementById("8Bit").checked;
-    // Read noise intensity directly from the select dropdown
     const noiseIntensity = parseInt(document.getElementById("noiseLevelSelect").value, 10) || 0;
-    
-    const width = imageData.width;
-    const height = imageData.height;
+
     if (is8Bit) {
+        // --- 8-Bit BMP Path ---
+        // Still need to extract section data for quantization/noise
+        const sectionPixelCount = width * height;
+        const sectionDataArray = new Uint8ClampedArray(sectionPixelCount * 4);
+        let sourceIndex, destIndex;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                sourceIndex = ((sy + y) * sourceTotalWidth + (sx + x)) * 4;
+                destIndex = (y * width + x) * 4;
+                sectionDataArray[destIndex] = sourceImageData.data[sourceIndex];
+                sectionDataArray[destIndex + 1] = sourceImageData.data[sourceIndex + 1];
+                sectionDataArray[destIndex + 2] = sourceImageData.data[sourceIndex + 2];
+                sectionDataArray[destIndex + 3] = sourceImageData.data[sourceIndex + 3]; // Copy alpha too
+            }
+        }
+        // Create an ImageData object for this section
+        const sectionImageData = new ImageData(sectionDataArray, width, height);
+
+        // Apply noise if selected (modifies sectionImageData.data in place)
+        if (noiseIntensity > 0) {
+            applyNoise(sectionImageData.data, width, height, noiseIntensity);
+        }
+
+        // Apply quantization to get the palette (uses the potentially noised sectionImageData)
         let paletteMethod = document.getElementById("paletteMethod").value;
-        const rowBytes = width + (width % 4 ? 4 - width % 4 : 0);
-        const fileSize = 54 + rowBytes * height + 1024;
         const colorTableSize = 256;
+        let colorTable;
+        // Quantization algorithms expect ImageData
+        if (paletteMethod === "kmeans") {
+          colorTable = kmeans(sectionImageData, colorTableSize);
+        } else if (paletteMethod === "medianCut") {
+          colorTable = medianCut(sectionImageData, colorTableSize);
+        } else if (paletteMethod === "popularityQuantization") {
+          colorTable = popularityQuantization(sectionImageData, colorTableSize);
+        } else if (paletteMethod === "neuquant") {
+          colorTable = neuQuant(sectionImageData, colorTableSize);
+        } else if (paletteMethod === "errorDiffusion") {
+          colorTable = errorDiffusionDithering(sectionImageData, colorTableSize); // Needs sectionImageData
+        } else {
+          // Default or fallback if method is invalid
+          console.warn("Invalid palette method selected, defaulting to medianCut.");
+          colorTable = medianCut(sectionImageData, colorTableSize);
+        }
+
+
+        // --- BMP Header and Data for 8-bit ---
+        const rowBytes = width + (width % 4 ? 4 - width % 4 : 0);
+        const fileSize = 54 + 1024 + rowBytes * height; // 54 header, 1024 palette, pixel data
 
         let offset = 0;
         let buffer = new ArrayBuffer(fileSize);
         let dataView = new DataView(buffer);
 
-        dataView.setUint8(offset++, 0x42);
-        dataView.setUint8(offset++, 0x4D);
+        // Standard BMP Header
+        dataView.setUint8(offset++, 0x42); // B
+        dataView.setUint8(offset++, 0x4D); // M
         dataView.setUint32(offset, fileSize, true); offset += 4;
         offset += 4; // reserved
-        dataView.setUint32(offset, 54 + 1024, true); offset += 4;
-        dataView.setUint32(offset, 40, true); offset += 4;
+        dataView.setUint32(offset, 54 + 1024, true); offset += 4; // Offset to pixel data
+
+        // DIB Header (BITMAPINFOHEADER)
+        dataView.setUint32(offset, 40, true); offset += 4; // Header size
         dataView.setInt32(offset, width, true); offset += 4;
         dataView.setInt32(offset, height, true); offset += 4;
-        dataView.setUint16(offset, 1, true); offset += 2;
-        dataView.setUint16(offset, 8, true); offset += 2;
-        offset += 24;
+        dataView.setUint16(offset, 1, true); offset += 2; // Planes
+        dataView.setUint16(offset, 8, true); offset += 2; // Bits per pixel
+        dataView.setUint32(offset, 0, true); offset += 4; // Compression (0 = BI_RGB)
+        dataView.setUint32(offset, rowBytes * height, true); offset += 4; // Image size (can be 0 for BI_RGB)
+        dataView.setInt32(offset, 2835, true); offset += 4; // X pixels per meter (~72 DPI)
+        dataView.setInt32(offset, 2835, true); offset += 4; // Y pixels per meter (~72 DPI)
+        dataView.setUint32(offset, colorTableSize, true); offset += 4; // Colors in palette (use 256)
+        dataView.setUint32(offset, colorTableSize, true); offset += 4; // Important colors (use 256)
 
-        // Aplicar cuantificación para obtener la paleta
-        let colorTable;
-        if (paletteMethod === "kmeans") {
-          colorTable = kmeans(imageData, colorTableSize);
-        } else if (paletteMethod === "medianCut") {
-          colorTable = medianCut(imageData, colorTableSize);
-        } else if (paletteMethod === "popularityQuantization") {
-          colorTable = popularityQuantization(imageData, colorTableSize);
-        } else if (paletteMethod === "neuquant") {
-          colorTable = neuQuant(imageData, colorTableSize);
-        } else if (paletteMethod === "errorDiffusion") {
-          colorTable = errorDiffusionDithering(imageData, colorTableSize);
-        }
 
-        // Escribir la tabla de colores en el buffer
+        // Write the color table
         for (let i = 0; i < colorTable.length; i++) {
-            dataView.setUint8(offset++, colorTable[i][2]);
-            dataView.setUint8(offset++, colorTable[i][1]);
-            dataView.setUint8(offset++, colorTable[i][0]);
+            dataView.setUint8(offset++, colorTable[i][2]); // Blue
+            dataView.setUint8(offset++, colorTable[i][1]); // Green
+            dataView.setUint8(offset++, colorTable[i][0]); // Red
+            dataView.setUint8(offset++, 0); // Reserved (alpha)
+        }
+        // Fill remaining palette entries if colorTable is smaller than 256
+         for (let i = colorTable.length; i < colorTableSize; i++) {
+            dataView.setUint8(offset++, 0);
+            dataView.setUint8(offset++, 0);
+            dataView.setUint8(offset++, 0);
             dataView.setUint8(offset++, 0);
         }
 
-        // Crear una copia de los datos de la imagen para trabajar con ella
-        const imageDataCopy = new Uint8ClampedArray(imageData.data);
-        
-        // Si se seleccionó la opción de ruido, aplicarlo antes de cuantificar
-        if (noiseIntensity > 0) {
-            applyNoise(imageDataCopy, width, height, noiseIntensity);
-        }
 
-        // Procesar los píxeles y escribirlos en el buffer
+        // Write pixel data (indices into the color table)
+        const padding = rowBytes - width;
         for (let y = height - 1; y >= 0; y--) {
             for (let x = 0; x < width; x++) {
+                // Read from the (potentially noised) section data
                 let index = (y * width + x) * 4;
-                let r = imageDataCopy[index];
-                let g = imageDataCopy[index + 1];
-                let b = imageDataCopy[index + 2];
+                let r = sectionImageData.data[index];
+                let g = sectionImageData.data[index + 1];
+                let b = sectionImageData.data[index + 2];
                 let colorIndex = nearestColorIndex(colorTable, r, g, b);
                 dataView.setUint8(offset++, colorIndex);
             }
-            offset += rowBytes - width;
+            // Add padding bytes
+            for (let p = 0; p < padding; p++) {
+                dataView.setUint8(offset++, 0);
+            }
         }
-    
-        return buffer;
-    } else {
-        // Apply noise if checked, even for 24-bit BMP
-        const width = imageData.width;
-        const height = imageData.height;
 
+        return buffer;
+
+    } else {
+        // --- 24-Bit BMP Path ---
         const rowBytes = width * 3 + (width * 3 % 4 ? 4 - width * 3 % 4 : 0);
         const fileSize = 54 + rowBytes * height;
         let offset = 0;
         let buffer = new ArrayBuffer(fileSize);
         let dataView = new DataView(buffer);
-        dataView.setUint8(offset++, 0x42);
-        dataView.setUint8(offset++, 0x4D);
-        dataView.setUint32(offset, fileSize, true);
-        offset += 4;
-        offset += 4; // reserved
-        dataView.setUint32(offset, 54, true);
-        offset += 4;
-        dataView.setUint32(offset, 40, true);
-        offset += 4;
-        dataView.setInt32(offset, width, true);
-        offset += 4;
-        dataView.setInt32(offset, height, true);
-        offset += 4;
-        dataView.setUint16(offset, 1, true);
-        offset += 2;
-        dataView.setUint16(offset, 24, true);
-        offset += 2;
-        // Completar correctamente el encabezado de BMP - AÑADIENDO CAMPOS FALTANTES
-        dataView.setUint32(offset, 0, true); // Compresión - debe ser 0 para RGB sin comprimir
-        offset += 4;
-        dataView.setUint32(offset, rowBytes * height, true); // Tamaño de la imagen en bytes
-        offset += 4;
-        dataView.setInt32(offset, 2835, true); // Resolución horizontal (píxeles por metro) - ~72 DPI
-        offset += 4;
-        dataView.setInt32(offset, 2835, true); // Resolución vertical (píxeles por metro) - ~72 DPI
-        offset += 4;
-        dataView.setUint32(offset, 0, true); // Número de colores en la paleta (0 para todos)
-        offset += 4;
-        dataView.setUint32(offset, 0, true); // Número de colores importantes (0 para todos)
-        offset += 4;
 
-        // Crear copia para trabajar con los datos
-        const imageDataCopy = new Uint8ClampedArray(imageData.data);
-        
-        // Apply noise if the checkbox is checked, before writing pixels
+        // Standard BMP Header
+        dataView.setUint8(offset++, 0x42); // B
+        dataView.setUint8(offset++, 0x4D); // M
+        dataView.setUint32(offset, fileSize, true); offset += 4;
+        offset += 4; // reserved
+        dataView.setUint32(offset, 54, true); offset += 4; // Offset to pixel data
+
+        // DIB Header (BITMAPINFOHEADER)
+        dataView.setUint32(offset, 40, true); offset += 4; // Header size
+        dataView.setInt32(offset, width, true); offset += 4;
+        dataView.setInt32(offset, height, true); offset += 4;
+        dataView.setUint16(offset, 1, true); offset += 2; // Planes
+        dataView.setUint16(offset, 24, true); offset += 2; // Bits per pixel
+        dataView.setUint32(offset, 0, true); offset += 4; // Compression (0 = BI_RGB)
+        dataView.setUint32(offset, rowBytes * height, true); offset += 4; // Image size
+        dataView.setInt32(offset, 2835, true); offset += 4; // X pixels per meter (~72 DPI)
+        dataView.setInt32(offset, 2835, true); offset += 4; // Y pixels per meter (~72 DPI)
+        dataView.setUint32(offset, 0, true); offset += 4; // Colors in palette (0 for 24-bit)
+        dataView.setUint32(offset, 0, true); offset += 4; // Important colors (0 = all)
+
+
+        // Apply noise directly to the sourceImageData section if needed
+        // Note: This modifies the sourceImageData.data IN PLACE for the section.
+        // This is generally okay as it's usually read once per crop operation.
+        // If the original data needed preserving elsewhere, a copy would be needed here.
         if (noiseIntensity > 0) {
-            applyNoise(imageDataCopy, width, height, noiseIntensity);
+             // We need a function that applies noise to a sub-rectangle of the source data
+             applyNoiseToSubRectangle(sourceImageData.data, sourceTotalWidth, sx, sy, width, height, noiseIntensity);
         }
-        
-        // Escribir los datos de los píxeles con el relleno correcto
+
+        // Write pixel data (BGR order) directly reading from the sourceImageData sub-rectangle
         const padding = rowBytes - (width * 3);
-        
-        for (let y = height - 1; y >= 0; y--) {
-            for (let x = 0; x < width; x++) {
-                let index = (y * width + x) * 4;
-                let r = imageDataCopy[index];
-                let g = imageDataCopy[index + 1];
-                let b = imageDataCopy[index + 2];
+        let sourceIndex;
+
+        for (let y = height - 1; y >= 0; y--) { // Iterate rows bottom-up
+            for (let x = 0; x < width; x++) { // Iterate pixels left-to-right
+                // Calculate index in the large source image data
+                sourceIndex = ((sy + y) * sourceTotalWidth + (sx + x)) * 4;
+
+                // Read RGB (potentially modified by applyNoiseToSubRectangle)
+                let r = sourceImageData.data[sourceIndex];
+                let g = sourceImageData.data[sourceIndex + 1];
+                let b = sourceImageData.data[sourceIndex + 2];
+
+                // Write BGR to BMP buffer
                 dataView.setUint8(offset++, b);
                 dataView.setUint8(offset++, g);
                 dataView.setUint8(offset++, r);
             }
-            
-            // Agregar bytes de relleno al final de cada fila para cumplir con la alineación de 4 bytes
+
+            // Add padding bytes at the end of the row
             for (let p = 0; p < padding; p++) {
                 dataView.setUint8(offset++, 0);
             }
         }
-        
+
         return buffer;
     }
 }
 
 /**
  * Aplica ruido aleatorio a los datos de imagen
- * @param {Uint8ClampedArray} imageData - Array de datos de imagen
- * @param {number} width - Ancho de la imagen
- * @param {number} height - Alto de la imagen
+ * @param {Uint8ClampedArray} imageDataData - Array de datos de imagen (solo el .data)
+ * @param {number} width - Ancho de la imagen (o sección)
+ * @param {number} height - Alto de la imagen (o sección)
  * @param {number} intensity - Intensidad del ruido (0-100)
  */
-function applyNoise(imageData, width, height, intensity) {
-    // Normalizar intensidad a un valor entre 0 y 1
+function applyNoise(imageDataData, width, height, intensity) {
+    // This function now operates directly on the .data array
     const noiseLevel = Math.min(100, Math.max(0, intensity)) / 100;
-    
-    // Maximum variation in Lightness (L) based on noiseLevel
-    // Noise will range from -maxLightnessNoise to +maxLightnessNoise
-    const maxLightnessNoise = noiseLevel * 0.5; // e.g., 20% intensity -> noiseLevel 0.2 -> max +/- 0.1 variation in L
-    
+    const maxLightnessNoise = noiseLevel * 0.5;
+
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            // Apply noise to every pixel, but vary the amount
             const index = (y * width + x) * 4;
-            
-            // Get original RGB
-            let r = imageData[index];
-            let g = imageData[index + 1];
-            let b = imageData[index + 2];
-            
-            // Convert to HSL
+
+            let r = imageDataData[index];
+            let g = imageDataData[index + 1];
+            let b = imageDataData[index + 2];
+
             let [h, s, l] = rgbToHsl(r, g, b);
-            
-            // Calculate noise amount for this pixel (-max to +max)
-            // Using Math.random() * 2 - 1 gives a range from -1 to 1
             const lightnessNoise = (Math.random() * 2 - 1) * maxLightnessNoise;
-            
-            // Apply noise to Lightness, clamping between 0 and 1
             let noisyL = Math.max(0, Math.min(1, l + lightnessNoise));
-            
-            // Convert back to RGB (keeping original H and S)
             let [newR, newG, newB] = hslToRgb(h, s, noisyL);
-            
-            // Update image data
-            imageData[index] = newR;
-            imageData[index + 1] = newG;
-            imageData[index + 2] = newB;
-            // No modificar el canal alfa (index + 3)
+
+            imageDataData[index] = newR;
+            imageDataData[index + 1] = newG;
+            imageDataData[index + 2] = newB;
+        }
+    }
+}
+
+// New helper function to apply noise to a sub-rectangle of a larger data array
+/**
+ * Aplica ruido aleatorio a un sub-rectángulo dentro de un array de datos de imagen más grande
+ * @param {Uint8ClampedArray} sourceData - Array de datos de imagen completo (.data)
+ * @param {number} sourceTotalWidth - Ancho total de la imagen fuente
+ * @param {number} sx - Coordenada X inicial del sub-rectángulo
+ * @param {number} sy - Coordenada Y inicial del sub-rectángulo
+ * @param {number} width - Ancho del sub-rectángulo
+ * @param {number} height - Alto del sub-rectángulo
+ * @param {number} intensity - Intensidad del ruido (0-100)
+ */
+function applyNoiseToSubRectangle(sourceData, sourceTotalWidth, sx, sy, width, height, intensity) {
+    const noiseLevel = Math.min(100, Math.max(0, intensity)) / 100;
+    const maxLightnessNoise = noiseLevel * 0.5;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const sourceIndex = ((sy + y) * sourceTotalWidth + (sx + x)) * 4;
+
+            let r = sourceData[sourceIndex];
+            let g = sourceData[sourceIndex + 1];
+            let b = sourceData[sourceIndex + 2];
+
+            let [h, s, l] = rgbToHsl(r, g, b);
+            const lightnessNoise = (Math.random() * 2 - 1) * maxLightnessNoise;
+            let noisyL = Math.max(0, Math.min(1, l + lightnessNoise));
+            let [newR, newG, newB] = hslToRgb(h, s, noisyL);
+
+            sourceData[sourceIndex] = newR;
+            sourceData[sourceIndex + 1] = newG;
+            sourceData[sourceIndex + 2] = newB;
         }
     }
 }
