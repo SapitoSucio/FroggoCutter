@@ -12,7 +12,24 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <link rel="stylesheet" href="style.css">
+
+    <!-- Tippy.js CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/tippy.js@6/dist/tippy.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/tippy.js@6/themes/material.css"
+    />
+
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Popper.js (Required by Tippy.js) -->
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <!-- Tippy.js JS -->
+    <script src="https://unpkg.com/tippy.js@6"></script>
+
     <script type="module" src="script.js"></script>
 </head>
 <body class="h-full flex flex-col min-h-screen bg-gray-100 text-gray-900">
@@ -67,12 +84,14 @@
                         -->
 
                         <!-- Add Noise Level Select Dropdown (inside a container for visibility control) -->
-                        <div id="noiseControlContainer" class="flex items-center gap-2 ml-2" title="Adding noise can significantly improve the image quality displayed on the RO client.">
-                            <label for="noiseLevelSelect" class="">Noise:</label> 
+                        <div id="noiseControlContainer"
+                             class="flex items-center gap-2 ml-2"
+                             data-tippy-content="Adding noise can significantly improve the image quality displayed on the RO client.">
+                            <label for="noiseLevelSelect" class="">Noise:</label>
                             <select id="noiseLevelSelect" class="rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500">
                                 <option value="0">No Noise</option>
-                                <option value="15">Low</option>
-                                <option value="45">Medium</option> <!-- Added Medium -->
+                                <option value="12">Low</option>
+                                <option value="30">Medium</option> <!-- Added Medium -->
                                 <option value="80">Over 9000</option> <!-- Renamed High -->
                             </select>
                         </div>
@@ -83,12 +102,10 @@
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 0 V24"/>
                         </svg>
                         
-                        <label class="flex items-center space-x-2 group relative" title="Produces smaller and more compressed images">
+                        <label class="flex items-center space-x-2 group relative"
+                               data-tippy-content="Quantizes the image, reducing file size at the cost of some quality loss">
                             <input type="checkbox" id="8Bit" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
                             <span>8Bit</span>
-                            <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg w-48 text-center pointer-events-none z-10">
-                                Produces smaller and more compressed images
-                            </div>
                         </label>
                         <div class="relative flex items-center">
                             <select id="paletteMethod" disabled class="rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500">
@@ -111,11 +128,21 @@
 
                 <!-- Control de relación de aspecto (ahora en el centro) -->
                 <div class="flex flex-wrap gap-4">
-                    <button id="aspectRatio169" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300" title="Best aspect ratio for Ragnarok clients in fullscreen">16:9</button>
-                    <button id="aspectRatio43" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">4:3</button>
-                    <button id="aspectRatio11" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">1:1</button>
-                    <button id="aspectRatioFree" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Free</button>
-                    <button id="reset" class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300">Reset</button>
+                    <button id="aspectRatio169"
+                            class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300"
+                            data-tippy-content="Best aspect ratio for Ragnarok clients in fullscreen">16:9</button>
+                    <button id="aspectRatio43"
+                            class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300"
+                            data-tippy-content="Standard 4:3 aspect ratio">4:3</button>
+                    <button id="aspectRatio11"
+                            class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300"
+                            data-tippy-content="Square 1:1 aspect ratio">1:1</button>
+                    <button id="aspectRatioFree"
+                            class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300"
+                            data-tippy-content="No fixed aspect ratio">Free</button>
+                    <button id="reset"
+                            class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300"
+                            data-tippy-content="Reset crop area or clear image">Reset</button>
                 </div>
             </div>
 

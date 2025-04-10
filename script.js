@@ -1192,3 +1192,14 @@ function showLargeImageNoticeIfNeeded() {
       startTimer();
   }
 }
+
+// --- Initialize Tippy.js Tooltips ---
+document.addEventListener('DOMContentLoaded', () => {
+  tippy('[data-tippy-content]', {
+    animation: 'scale-subtle', // Or 'fade', 'shift-away', etc.
+    theme: 'material',      // Use the Material Design theme
+    arrow: true,            // Show arrow pointing to the element
+    delay: [100, 0],        // Delay before showing (100ms), no delay on hide
+    // You can add more default options here
+  });
+});
