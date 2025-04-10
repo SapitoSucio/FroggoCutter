@@ -298,3 +298,65 @@ body.dark-mode #methodInfoPopup .bg-white {
   transition: background-color 0.5s, color 0.5s;
 }
 
+/* Estilos para el aviso de imagen grande */
+#largeImageNotice {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 50;
+  max-width: 24rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-left: 4px solid #10b981; /* Borde verde neón */
+  background-color: #1f2937; /* Fondo oscuro */
+  color: #f3f4f6; /* Texto claro */
+  transition: all 0.3s ease;
+}
+
+/* Estilos para modo claro */
+body:not(.dark-mode) #largeImageNotice {
+  background-color: #ffffff;
+  color: #1f2937;
+  border-left-color: #059669; /* Verde más oscuro para modo claro */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Título del aviso */
+#largeImageNotice .font-bold {
+  color: #10b981; /* Verde neón */
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+/* Texto del aviso */
+#largeImageNotice p {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* Barra de progreso */
+.notice-progress-container {
+  margin-top: 0.5rem;
+  height: 0.25rem;
+  background-color: rgba(16, 185, 129, 0.2); /* Verde neón con transparencia */
+  border-radius: 0.125rem;
+  overflow: hidden;
+}
+
+#noticeProgressBar {
+  height: 100%;
+  background-color: #10b981; /* Verde neón */
+  transition: width 5s linear;
+}
+
+/* Estilos para modo claro */
+body:not(.dark-mode) .notice-progress-container {
+  background-color: rgba(5, 150, 105, 0.2); /* Verde más oscuro con transparencia */
+}
+
+body:not(.dark-mode) #noticeProgressBar {
+  background-color: #059669; /* Verde más oscuro */
+}
+

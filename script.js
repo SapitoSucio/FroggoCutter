@@ -300,23 +300,22 @@ cropButton.addEventListener('click', async () => {
     // Get text elements
     const cropText = document.getElementById('cropText');
     const loadingText = document.getElementById('loadingText');
-
-    // --- Start Animation & Disable Button ---
-    cropButton.disabled = true; // Disable button immediately
-    cropButton.classList.remove('bg-gray-800', 'hover:bg-green-600'); // Remove base colors
-    cropButton.classList.add('bg-green-700', 'animate-pulse', 'loading'); // Add loading styles and class
-    cropText.classList.add('-translate-y-full', 'opacity-0');
-    loadingText.classList.remove('translate-y-full', 'opacity-0');
-    loadingText.classList.add('translate-y-0', 'opacity-100'); // Ensure opacity is 1
-
-    // Allow a tiny moment for the browser to render the style changes before heavy task
-    // Using await Promise.resolve() or setTimeout(0) can sometimes help ensure rendering,
-    // but often just applying classes before sync code is enough.
-    // await new Promise(resolve => setTimeout(resolve, 50)); // Optional small delay
-
-    // --- Existing Logic ---
     const outputFormat = outputFormatSelect.value;
 
+    // Only apply processing state for BMP format
+    if (outputFormat === 'bmp') {
+        // --- Start Animation & Disable Button ---
+        cropButton.disabled = true; // Disable button immediately
+        cropButton.classList.remove('bg-gray-800', 'hover:bg-green-600'); // Remove base colors
+        cropButton.classList.add('bg-green-700', 'animate-pulse', 'loading'); // Add loading styles and class
+        
+        // Show loading text for BMP format
+        cropText.classList.add('-translate-y-full', 'opacity-0');
+        loadingText.classList.remove('translate-y-full', 'opacity-0');
+        loadingText.classList.add('translate-y-0', 'opacity-100');
+    }
+
+    // --- Existing Logic ---
     if (!cropper) {
         return;
     }
@@ -378,47 +377,17 @@ async function generateJpegFromCanvas(imageData, preciseCropData, isFullSelectio
         }
 
         finalCanvas.toBlob((blob) => {
-            // This callback happens *after* the main function might have continued
             try {
                 if (blob) {
                     saveAs(blob, 't_login.jpg');
-                } else {
-                    console.warn("JPEG blob creation failed.");
                 }
-            } catch (saveError) {
-                console.error("Error saving JPEG blob:", saveError);
             } finally {
-                // Reset button state and animation after blob processing/saving attempt
-                cropButton.disabled = false;
-                cropButton.classList.remove('bg-green-700', 'animate-pulse', 'loading'); // Remove loading styles and class
-                cropButton.classList.add('bg-gray-800', 'hover:bg-green-600'); // Add base colors back
-                // Reset animation
-                const cropText = document.getElementById('cropText');
-                const loadingText = document.getElementById('loadingText');
-                if (cropText && loadingText) {
-                    cropText.classList.remove('-translate-y-full', 'opacity-0');
-                    loadingText.classList.remove('translate-y-0', 'opacity-100');
-                    loadingText.classList.add('translate-y-full', 'opacity-0');
-                }
-                // cropButton.classList.remove('processing'); // Remove if not used
+                // No need to reset button state for JPEG as it wasn't changed
             }
         }, 'image/jpeg', 1.0);
 
     } catch (error) {
         console.error("Error in generateJpegFromCanvas:", error);
-        // Reset button state and animation on error during canvas creation
-        cropButton.disabled = false;
-        cropButton.classList.remove('bg-green-700', 'animate-pulse', 'loading'); // Remove loading styles and class
-        cropButton.classList.add('bg-gray-800', 'hover:bg-green-600'); // Add base colors back
-        // Reset animation
-        const cropText = document.getElementById('cropText');
-        const loadingText = document.getElementById('loadingText');
-        if (cropText && loadingText) {
-            cropText.classList.remove('-translate-y-full', 'opacity-0');
-            loadingText.classList.remove('translate-y-0', 'opacity-100');
-            loadingText.classList.add('translate-y-full', 'opacity-0');
-        }
-        // cropButton.classList.remove('processing'); // Remove if not used
     }
 }
 
@@ -484,11 +453,11 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
             } catch (err) {
                 console.error("Error during BMP processing/zipping/saving:", err);
             } finally {
-                // Reset button state and animation after all async operations inside blob callback are done
+                // Reset button state and animation
                 cropButton.disabled = false;
-                cropButton.classList.remove('bg-green-700', 'animate-pulse', 'loading'); // Remove loading styles and class
-                cropButton.classList.add('bg-gray-800', 'hover:bg-green-600'); // Add base colors back
-                // Reset animation
+                cropButton.classList.remove('bg-green-700', 'animate-pulse', 'loading');
+                cropButton.classList.add('bg-gray-800', 'hover:bg-green-600');
+                // Reset animation for BMP format
                 const cropText = document.getElementById('cropText');
                 const loadingText = document.getElementById('loadingText');
                 if (cropText && loadingText) {
@@ -496,7 +465,6 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
                     loadingText.classList.remove('translate-y-0', 'opacity-100');
                     loadingText.classList.add('translate-y-full', 'opacity-0');
                 }
-                // cropButton.classList.remove('processing'); // Remove if not used
             }
         }); // End of toBlob callback
 
