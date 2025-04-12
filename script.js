@@ -375,7 +375,7 @@ async function generateJpegFromCanvas(imageData, preciseCropData, isFullSelectio
             } finally {
                 // No need to reset button state for JPEG as it wasn't changed
             }
-        }, 'image/jpeg', 1.0);
+        }, 'image/jpeg', 0.99);
 
     } catch (error) {
         console.error("Error in generateJpegFromCanvas:", error);
