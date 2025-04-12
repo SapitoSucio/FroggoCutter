@@ -334,18 +334,9 @@ cropButton.addEventListener('click', async () => {
 
     if (outputFormat === 't_login') {
         // --- Salida T_LOGIN (JPEG) ---
-        if (isFullSelection && originalImageBlob) {
-            // Selección completa Y tenemos el blob original: Guardar el original directamente
-            try {
-                saveAs(originalImageBlob, 't_login.jpg');
-            } catch (error) {
-                // Fallback a método de canvas si saveAs falla con el blob original
-                generateJpegFromCanvas(imageData, preciseCropData, isFullSelection);
-            }
-        } else {
-            // Recorte parcial O no tenemos blob original: Generar desde canvas
-            generateJpegFromCanvas(imageData, preciseCropData, isFullSelection);
-        }
+        // SIEMPRE generar desde canvas para asegurar que es un JPEG real.
+        // Eliminamos la condición: if (isFullSelection && originalImageBlob)
+        generateJpegFromCanvas(imageData, preciseCropData, isFullSelection);
 
     } else {
         // --- Salida BMP --- (Siempre se genera desde canvas)
