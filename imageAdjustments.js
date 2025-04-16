@@ -28,6 +28,26 @@ class ImageAdjuster {
     }
     
     /**
+     * Resetea todos los ajustes a sus valores por defecto
+     * @returns {Object} - Los ajustes reseteados
+     */
+    resetSettings() {
+        this.settings = {
+            brightness: 0,
+            contrast: 0,
+            saturation: 0,
+            vibrance: 0,
+            lutPreset: 'none'
+        };
+        
+        if (this.debug) {
+            console.log("Ajustes reseteados a valores por defecto:", this.settings);
+        }
+        
+        return this.settings;
+    }
+    
+    /**
      * Aplica los ajustes a la imagen en el cropper
      * @param {Cropper} cropper - Instancia del cropper
      */
@@ -332,8 +352,8 @@ class ImageAdjuster {
         const vibranceFactor = vibrance / 100.0; // Range -1 to 1
 
         // Contrast calculation: Adjust pixel based on distance from average (127)
-        // factor = (1 + contrastFactor) -> range 0 to 2
-        // newValue = factor * (oldValue - 127) + 127
+        // Para mayor compatibilidad con CSS filters, usamos el mismo cálculo que filter:contrast()
+        // CSS filter contrast utiliza: contrastFactor = 1 + (contrast/100)
         const contrastAdjust = (1 + contrastFactor);
 
         try {
@@ -344,16 +364,18 @@ class ImageAdjuster {
 
                 // 1. Brillo
                 if (brightnessFactor !== 0) {
-                    r = Math.max(0, Math.min(255, r + brightnessFactor * 255));
-                    g = Math.max(0, Math.min(255, g + brightnessFactor * 255));
-                    b = Math.max(0, Math.min(255, b + brightnessFactor * 255));
+                    // Usar cálculo compatible con filter:brightness()
+                    r = r * (1 + brightnessFactor);
+                    g = g * (1 + brightnessFactor);
+                    b = b * (1 + brightnessFactor);
                 }
 
                 // 2. Contraste
                 if (contrastFactor !== 0) {
-                    r = Math.max(0, Math.min(255, contrastAdjust * (r - 127) + 127));
-                    g = Math.max(0, Math.min(255, contrastAdjust * (g - 127) + 127));
-                    b = Math.max(0, Math.min(255, contrastAdjust * (b - 127) + 127));
+                    // Usar fórmula compatible con filter:contrast()
+                    r = (r - 127.5) * contrastAdjust + 127.5;
+                    g = (g - 127.5) * contrastAdjust + 127.5;
+                    b = (b - 127.5) * contrastAdjust + 127.5;
                 }
 
                 // 3. Saturación y Vibrance (trabajan en HSL)
