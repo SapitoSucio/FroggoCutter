@@ -286,6 +286,23 @@ async function handleImageLoad(file) {
                         imageToCrop.addEventListener('crop', drawCustomGuides);
                     }
                 }
+                
+                // Inicializar módulos cuando el cropper está listo
+                if (window.initImageAdjustments) {
+                    window.initImageAdjustments(cropper);
+                }
+                
+                if (window.initLogoOverlay) {
+                    window.initLogoOverlay(cropper);
+                }
+                
+                // Actualizar estado de las guías
+                if (window.gridGuides) {
+                    const guideCanvas = document.getElementById('guideCanvas');
+                    if (guideCanvas) {
+                        window.gridGuides.setGuideCanvas(guideCanvas);
+                    }
+                }
             } // Fin del 'ready' callback
         });
 
@@ -367,6 +384,22 @@ async function generateJpegFromCanvas(imageData, preciseCropData, isFullSelectio
             throw new Error("Failed to create final canvas for JPEG.");
         }
 
+        // --- Apply Image Adjustments ---
+        const finalCtx = finalCanvas.getContext('2d', { willReadFrequently: true });
+        if (!imageAdjuster.isNeutral()) {
+            console.log("Applying adjustments to JPEG...");
+            try {
+                let imageData = finalCtx.getImageData(0, 0, finalCanvas.width, finalCanvas.height);
+                let modifiedImageData = imageAdjuster.applyAdjustmentsToImageData(imageData, imageAdjuster.settings);
+                finalCtx.putImageData(modifiedImageData, 0, 0);
+                console.log("Adjustments applied successfully to JPEG.");
+            } catch (error) {
+                console.error("Error applying adjustments to JPEG:", error);
+                // Continue without adjustments if error occurs
+            }
+        }
+        // --- End Apply Image Adjustments ---
+
         finalCanvas.toBlob((blob) => {
             try {
                 if (blob) {
@@ -402,6 +435,22 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
         if (!finalCanvas) {
             throw new Error("Failed to create final canvas for BMP.");
         }
+
+        // --- Apply Image Adjustments ---
+        const finalCtx = finalCanvas.getContext('2d', { willReadFrequently: true });
+        if (!imageAdjuster.isNeutral()) {
+            console.log("Applying adjustments to BMP canvas before splitting...");
+            try {
+                let imageData = finalCtx.getImageData(0, 0, finalCanvas.width, finalCanvas.height);
+                let modifiedImageData = imageAdjuster.applyAdjustmentsToImageData(imageData, imageAdjuster.settings);
+                finalCtx.putImageData(modifiedImageData, 0, 0);
+                console.log("Adjustments applied successfully to BMP canvas.");
+            } catch (error) {
+                console.error("Error applying adjustments to BMP canvas:", error);
+                // Continue without adjustments if error occurs
+            }
+        }
+        // --- End Apply Image Adjustments ---
 
         // Lógica existente para procesar BMP desde finalCanvas
         finalCanvas.toBlob(async (blob) => { // Callback is already async
@@ -559,6 +608,8 @@ import popularityQuantization from './popularityQuantization.js';
 import neuQuant from './neuquant.js';
 import errorDiffusionDithering from './errorDiffusionDithering.js';
 import { nearestColorIndex } from './utils.js';
+// Import the image adjuster instance
+import imageAdjuster from './imageAdjustments.js';
 
 // Modify imageDataToBMP to work with a sub-rectangle of a larger ImageData
 function imageDataToBMP(sourceImageData, sourceTotalWidth, sx, sy, width, height) {
@@ -999,6 +1050,22 @@ function resetUI() {
       dropZone.classList.remove('fade-out');
     }, 50);
   }, 300);
+
+  // Reset any active logo overlay
+  if (window.logoOverlay) {
+    window.logoOverlay.removeLogo();
+  }
+  
+  // Update checkboxes in the UI
+  const showLogoCheckbox = document.getElementById('showLogoOverlay');
+  if (showLogoCheckbox) {
+    showLogoCheckbox.checked = false;
+  }
+  
+  const logoControls = document.getElementById('logoControls');
+  if (logoControls) {
+    logoControls.classList.add('hidden');
+  }
 }
 
 // Reemplazar el event listener existente para el botón reset
@@ -1235,6 +1302,30 @@ document.addEventListener('DOMContentLoaded', () => {
   let loginBoxOverlay = null;
   let originalLoginBoxWidth = 0;
   let originalLoginBoxHeight = 0;
+  
+  // Importar e inicializar las nuevas funcionalidades
+  import('./accordionHandler.js').then(module => {
+    module.initAccordion();
+  }).catch(err => console.error('Error loading accordion module:', err));
+  
+  // Inicializar ajustes de imagen cuando el cropper esté listo
+  import('./imageAdjustments.js').then(module => {
+    // Se inicializará cuando el cropper esté listo (llamada desde handleImageLoad)
+    window.initImageAdjustments = module.initImageAdjustments;
+  }).catch(err => console.error('Error loading image adjustments module:', err));
+  
+  // Inicializar logo overlay cuando el cropper esté listo
+  import('./logoOverlay.js').then(module => {
+    // Se inicializará cuando el cropper esté listo (llamada desde handleImageLoad)
+    window.initLogoOverlay = module.initLogoOverlay;
+    window.logoOverlay = module.default;
+  }).catch(err => console.error('Error loading logo overlay module:', err));
+  
+  // Inicializar grid guides
+  import('./gridGuides.js').then(module => {
+    module.initGridGuides();
+    window.gridGuides = module.default;
+  }).catch(err => console.error('Error loading grid guides module:', err));
   
   // Toggle sidebar visibility
   sidebarTab.addEventListener('click', () => {

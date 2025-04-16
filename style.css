@@ -384,6 +384,87 @@ body:not(.dark-mode) #noticeProgressBar {
   transform: rotate(180deg);
 }
 
+/* Accordion styles */
+.accordion-btn {
+  cursor: pointer;
+  padding: 0.5rem 0;
+  user-select: none;
+}
+
+.accordion-icon {
+  transition: transform 0.3s ease;
+}
+
+.accordion-btn.active .accordion-icon {
+  transform: rotate(180deg);
+}
+
+/* Range input styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 6px;
+  background: #e2e8f0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #10b981;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #10b981;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+body.dark-mode input[type="range"] {
+  background: #4b5563;
+}
+
+input[type="range"]:focus {
+  outline: none;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb {
+  background: #059669;
+}
+
+input[type="range"]:hover::-moz-range-thumb {
+  background: #059669;
+}
+
+/* Logo overlay styles */
+#logoOverlay {
+  position: absolute;
+  pointer-events: none;
+  z-index: 14;
+  transition: opacity 0.3s ease;
+}
+
+#logoOverlay.draggable {
+  pointer-events: auto;
+  cursor: move;
+}
+
+#logoOverlay.resizing {
+  pointer-events: auto;
+  cursor: nwse-resize;
+}
+
+#logoOverlay.rotating {
+  pointer-events: auto;
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>'), auto;
+}
+
 /* Login box overlay styles */
 #loginBoxOverlay {
   position: absolute;
