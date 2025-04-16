@@ -1226,3 +1226,257 @@ document.addEventListener('DOMContentLoaded', () => {
     // You can add more default options here
   });
 });
+
+// --- Sidebar and Login Box Functionality ---
+document.addEventListener('DOMContentLoaded', () => {
+  const sidebar = document.getElementById('sidebar');
+  const sidebarTab = document.getElementById('sidebar-tab');
+  const showLoginBoxCheckbox = document.getElementById('showLoginBox');
+  let loginBoxOverlay = null;
+  let originalLoginBoxWidth = 0;
+  let originalLoginBoxHeight = 0;
+  
+  // Toggle sidebar visibility
+  sidebarTab.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+  });
+  
+  // Handle login box checkbox
+  showLoginBoxCheckbox.addEventListener('change', function() {
+    if (this.checked) {
+      addLoginBoxOverlay();
+    } else {
+      removeLoginBoxOverlay();
+    }
+  });
+  
+  // Function to add login box overlay to the cropper
+  function addLoginBoxOverlay() {
+    // Remove existing overlay if any
+    removeLoginBoxOverlay();
+    
+    // Create new overlay only if cropper exists and is ready
+    if (!cropper || !cropper.ready) {
+      console.warn('Cropper not ready, cannot add login box overlay');
+      return;
+    }
+    
+    // Create the login box image element
+    loginBoxOverlay = document.createElement('img');
+    loginBoxOverlay.id = 'loginBoxOverlay';
+    loginBoxOverlay.src = 'public/img/bg_login.png';
+    loginBoxOverlay.alt = 'Login Box';
+    loginBoxOverlay.className = 'absolute pointer-events-none';
+    
+    // Initially hide the overlay until it loads
+    loginBoxOverlay.style.opacity = '0';
+    
+    // Wait for the image to load to get its dimensions
+    loginBoxOverlay.onload = function() {
+      // Store original dimensions
+      originalLoginBoxWidth = this.naturalWidth;
+      originalLoginBoxHeight = this.naturalHeight;
+      
+      console.log('Login box loaded. Original dimensions:', originalLoginBoxWidth, 'x', originalLoginBoxHeight);
+      
+      // Position the overlay on the cropper
+      positionLoginBoxOverlay();
+      
+      // Show the overlay with fade-in effect
+      loginBoxOverlay.style.opacity = '0.85';
+      
+      // Update position when cropper changes - listen to ALL cropper events
+      // Remove any existing event listeners first
+      if (imageToCrop) {
+        imageToCrop.removeEventListener('crop', positionLoginBoxOverlay);
+      }
+      
+      // Add listeners to multiple cropper events to ensure we catch all changes
+      imageToCrop.addEventListener('crop', positionLoginBoxOverlay);
+      imageToCrop.addEventListener('cropstart', positionLoginBoxOverlay);
+      imageToCrop.addEventListener('cropmove', positionLoginBoxOverlay);
+      imageToCrop.addEventListener('cropend', positionLoginBoxOverlay);
+      imageToCrop.addEventListener('zoom', positionLoginBoxOverlay);
+      
+      // Also add a manual trigger when window is resized
+      window.addEventListener('resize', positionLoginBoxOverlay);
+    };
+    
+    // Handle load errors
+    loginBoxOverlay.onerror = function() {
+      console.error('Failed to load login box image');
+      showLoginBoxCheckbox.checked = false;
+      removeLoginBoxOverlay();
+    };
+    
+    // Find the cropper container and add the overlay
+    const cropperContainer = document.querySelector('.cropper-container');
+    if (cropperContainer) {
+      cropperContainer.appendChild(loginBoxOverlay);
+    } else {
+      console.error('Cropper container not found');
+      showLoginBoxCheckbox.checked = false;
+    }
+  }
+  
+  // Function to remove login box overlay
+  function removeLoginBoxOverlay() {
+    if (loginBoxOverlay) {
+      // Remove all event listeners to prevent memory leaks
+      if (imageToCrop) {
+        imageToCrop.removeEventListener('crop', positionLoginBoxOverlay);
+        imageToCrop.removeEventListener('cropstart', positionLoginBoxOverlay);
+        imageToCrop.removeEventListener('cropmove', positionLoginBoxOverlay);
+        imageToCrop.removeEventListener('cropend', positionLoginBoxOverlay);
+        imageToCrop.removeEventListener('zoom', positionLoginBoxOverlay);
+      }
+      
+      // Remove window resize listener
+      window.removeEventListener('resize', positionLoginBoxOverlay);
+      
+      // Remove the overlay element
+      loginBoxOverlay.remove();
+      loginBoxOverlay = null;
+    }
+  }
+  
+  // Function to position the login box overlay relative to the crop box
+  function positionLoginBoxOverlay() {
+    if (!loginBoxOverlay || !cropper || !cropper.ready) return;
+    
+    // Get current cropper box dimensions
+    const cropBoxData = cropper.getCropBoxData();
+    const cropBoxWidth = cropBoxData.width;
+    const cropBoxHeight = cropBoxData.height;
+    
+    // Store original login box dimensions and aspect ratio
+    const aspectRatio = originalLoginBoxWidth / originalLoginBoxHeight;
+    
+    // Fixed reference size - 301x132 is the login box's real dimensions
+    // On first load, use real size (100%)
+    if (!loginBoxOverlay.dataset.initialScaleSaved) {
+      // Mark that we're saving the initial scale
+      loginBoxOverlay.dataset.initialScaleSaved = "true";
+      
+      // Store initial crop box dimensions for future reference
+      loginBoxOverlay.dataset.initialCropWidth = cropBoxWidth;
+      loginBoxOverlay.dataset.initialCropHeight = cropBoxHeight;
+      
+      console.log(`Initial cropbox: ${cropBoxWidth}x${cropBoxHeight}`);
+      console.log(`Login box real size: ${originalLoginBoxWidth}x${originalLoginBoxHeight}`);
+      
+      // Use real dimensions for first positioning, scaled down only if needed
+      let scaledWidth = originalLoginBoxWidth;
+      let scaledHeight = originalLoginBoxHeight;
+      
+      // Scale down if the login box is larger than the available space
+      const maxWidth = cropBoxWidth * 0.95; // 95% of crop width
+      const maxHeight = cropBoxHeight * 0.95; // 95% of crop height
+      
+      if (scaledWidth > maxWidth || scaledHeight > maxHeight) {
+        const scaleX = maxWidth / scaledWidth;
+        const scaleY = maxHeight / scaledHeight;
+        const scale = Math.min(scaleX, scaleY);
+        
+        scaledWidth = originalLoginBoxWidth * scale;
+        scaledHeight = originalLoginBoxHeight * scale;
+        
+        console.log(`Initial scaling needed. New size: ${scaledWidth}x${scaledHeight}`);
+      }
+      
+      // Center the login box within the crop box with vertical offset
+      const verticalOffset = cropBoxHeight * 0.25; // 25% down from center
+      const left = cropBoxData.left + (cropBoxWidth - scaledWidth) / 2;
+      const top = cropBoxData.top + (cropBoxHeight - scaledHeight) / 2 + verticalOffset;
+      
+      // Apply position and scale
+      loginBoxOverlay.style.width = `${scaledWidth}px`;
+      loginBoxOverlay.style.height = `${scaledHeight}px`;
+      loginBoxOverlay.style.left = `${left}px`;
+      loginBoxOverlay.style.top = `${top}px`;
+      
+      // Save the initial dimensions for reference
+      loginBoxOverlay.dataset.lastWidth = scaledWidth;
+      loginBoxOverlay.dataset.lastHeight = scaledHeight;
+      loginBoxOverlay.dataset.lastCropWidth = cropBoxWidth;
+      loginBoxOverlay.dataset.lastCropHeight = cropBoxHeight;
+      
+      console.log(`Login box positioned at initial size: ${scaledWidth}x${scaledHeight}`);
+    } 
+    // For subsequent positionings, scale proportionally based on crop box changes
+    else {
+      // Get the saved dimensions
+      const lastWidth = parseFloat(loginBoxOverlay.dataset.lastWidth) || originalLoginBoxWidth;
+      const lastHeight = parseFloat(loginBoxOverlay.dataset.lastHeight) || originalLoginBoxHeight;
+      const lastCropWidth = parseFloat(loginBoxOverlay.dataset.lastCropWidth) || cropBoxWidth;
+      const lastCropHeight = parseFloat(loginBoxOverlay.dataset.lastCropHeight) || cropBoxHeight;
+      
+      // Calculate scale factor based on crop box size change
+      const widthRatio = cropBoxWidth / lastCropWidth;
+      const heightRatio = cropBoxHeight / lastCropHeight;
+      
+      // Use the average of width and height ratio for a more balanced scaling
+      const scaleRatio = (widthRatio + heightRatio) / 2;
+      
+      // Calculate new dimensions based on scale ratio
+      let newWidth = lastWidth * scaleRatio;
+      let newHeight = lastHeight * scaleRatio;
+      
+      // Safety check: ensure dimensions don't exceed original size
+      newWidth = Math.min(newWidth, originalLoginBoxWidth);
+      newHeight = Math.min(newHeight, originalLoginBoxHeight);
+      
+      // Safety check: ensure dimensions don't exceed crop box bounds
+      if (newWidth > cropBoxWidth * 0.95) {
+        newWidth = cropBoxWidth * 0.95;
+        newHeight = newWidth / aspectRatio;
+      }
+      
+      if (newHeight > cropBoxHeight * 0.95) {
+        newHeight = cropBoxHeight * 0.95;
+        newWidth = newHeight * aspectRatio;
+      }
+      
+      // Safety check: ensure minimum dimensions to prevent vanishing login box
+      const minWidth = Math.min(30, cropBoxWidth * 0.1);
+      const minHeight = Math.min(15, cropBoxHeight * 0.1);
+      
+      newWidth = Math.max(newWidth, minWidth);
+      newHeight = Math.max(newHeight, minHeight);
+      
+      // Center the login box within the crop box with vertical offset
+      const verticalOffset = cropBoxHeight * 0.25; // 25% down from center
+      const left = cropBoxData.left + (cropBoxWidth - newWidth) / 2;
+      const top = cropBoxData.top + (cropBoxHeight - newHeight) / 2 + verticalOffset;
+      
+      // Apply position and scale
+      loginBoxOverlay.style.width = `${newWidth}px`;
+      loginBoxOverlay.style.height = `${newHeight}px`;
+      loginBoxOverlay.style.left = `${left}px`;
+      loginBoxOverlay.style.top = `${top}px`;
+      
+      // Update the saved dimensions
+      loginBoxOverlay.dataset.lastWidth = newWidth;
+      loginBoxOverlay.dataset.lastHeight = newHeight;
+      loginBoxOverlay.dataset.lastCropWidth = cropBoxWidth;
+      loginBoxOverlay.dataset.lastCropHeight = cropBoxHeight;
+      
+      console.log(`Login box resized to: ${newWidth}x${newHeight} (crop box: ${cropBoxWidth}x${cropBoxHeight})`);
+    }
+  }
+  
+  // Reset login box when resetting UI
+  const originalResetUI = resetUI;
+  resetUI = function() {
+    // Uncheck the login box checkbox
+    if (showLoginBoxCheckbox) {
+      showLoginBoxCheckbox.checked = false;
+    }
+    
+    // Remove the login box overlay
+    removeLoginBoxOverlay();
+    
+    // Call the original resetUI function
+    originalResetUI();
+  };
+});

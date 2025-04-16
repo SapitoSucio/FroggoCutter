@@ -360,3 +360,52 @@ body:not(.dark-mode) #noticeProgressBar {
   background-color: #059669; /* Verde más oscuro */
 }
 
+/* Sidebar styles */
+#sidebar {
+  height: auto;
+  box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+  will-change: transform;
+}
+
+#sidebar.open {
+  transform: translateX(0);
+}
+
+#sidebar-tab {
+  will-change: transform;
+  transition: background-color 0.3s;
+}
+
+#sidebar-tab svg {
+  transition: transform 0.3s ease;
+}
+
+#sidebar.open #sidebar-tab svg {
+  transform: rotate(180deg);
+}
+
+/* Login box overlay styles */
+#loginBoxOverlay {
+  position: absolute;
+  z-index: 15; /* Above crop area but below crop handles */
+  pointer-events: none; /* Allow clicking through the overlay */
+  transform-origin: top left;
+  transition: opacity 0.3s ease;
+  opacity: 0.85; /* Semi-transparent by default */
+}
+
+#loginBoxOverlay:hover {
+  opacity: 0.95; /* More visible on hover */
+}
+
+/* Add a subtle highlight effect to the login box */
+#loginBoxOverlay {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+/* Style for the login box checkbox when active */
+#showLoginBox:checked {
+  background-color: #10b981;
+  border-color: #10b981;
+}
+

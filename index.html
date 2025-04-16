@@ -237,5 +237,35 @@
             <div id="noticeProgressBar" class="h-full" style="width: 100%;"></div>
         </div>
     </div>
+
+    <!-- After the dark mode button and before the largeImageNotice -->
+    <div id="sidebar" class="fixed right-0 top-1/4 z-40 transform transition-transform duration-300 translate-x-full">
+        <!-- Sidebar tab -->
+        <div id="sidebar-tab" class="absolute left-0 top-0 transform -translate-x-full bg-gray-800 dark:bg-gray-900 text-white px-4 py-3 rounded-l-xl cursor-pointer hover:bg-green-600 transition-colors duration-300 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+            <span class="ml-2">Options</span>
+        </div>
+        
+        <!-- Sidebar content -->
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-bl-xl rounded-br-xl shadow-lg w-64">
+            <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">Additional Options</h3>
+            
+            <!-- Login box option -->
+            <div class="mb-4">
+                <label class="flex items-center space-x-2 text-gray-900 dark:text-white cursor-pointer">
+                    <input type="checkbox" id="showLoginBox" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+                    <span>Show Login Box</span>
+                </label>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Displays the login box overlay (won't appear in final image)</p>
+            </div>
+            
+            <!-- Space for more options -->
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                <p class="text-sm text-gray-600 dark:text-gray-400 italic">More options coming soon 🐸☝️</p>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
