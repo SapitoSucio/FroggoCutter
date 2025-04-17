@@ -240,6 +240,10 @@ body.dark-mode select option {
   overflow: hidden;
 }
 
+.cropper-center{
+  z-index: 3;
+}
+
 /* Asegurar que el z-index y pointer-events estén correctamente configurados */
 #dropZone {
   z-index: 10;

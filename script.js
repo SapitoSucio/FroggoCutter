@@ -1109,12 +1109,6 @@ function drawCustomGuides() {
 function resetUI() {
   // Si hay un cropper activo, destruirlo
   if (cropper) {
-    // Remover listener de guías ANTES de destruir el cropper
-    // Listen on imageToCrop now
-    if (imageToCrop) {
-      imageToCrop.removeEventListener('crop', drawCustomGuides);
-    }
-
     // Revocar URL de objeto antes de destruir
     if (cropper.url) {
         URL.revokeObjectURL(cropper.url);

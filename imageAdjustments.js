@@ -127,9 +127,28 @@ class ImageAdjuster {
      * @param {Function} callback - Función opcional a llamar cuando se complete el proceso
      */
     apply(cropper, callback = null) {
+        // Evitar aplicaciones múltiples muy cercanas en el tiempo
+        const now = Date.now();
+        if (this._lastApplyTime && now - this._lastApplyTime < 100) {
+            if (this.debug) console.log("apply: Demasiadas llamadas en poco tiempo, omitiendo.");
+            if (callback) callback(false);
+            return;
+        }
+        this._lastApplyTime = now;
+        
+        // Evitar ejecuciones recursivas
+        if (this._isApplying) {
+            if (this.debug) console.log("apply: Ya hay una aplicación en curso, omitiendo.");
+            if (callback) callback(false);
+            return;
+        }
+        
+        this._isApplying = true;
+        
         if (!cropper || !cropper.ready) {
             if (this.debug) console.log("Cropper no está listo");
             if (callback) callback(false);
+            this._isApplying = false;
             return;
         }
         
@@ -153,6 +172,7 @@ class ImageAdjuster {
                     if (!cropperViewBox || !originalImage) {
                         if (this.debug) console.log("No se encontraron elementos esenciales del cropper en apply()");
                         if (callback) callback(false);
+                        this._isApplying = false;
                         return;
                     }
                     
@@ -170,6 +190,7 @@ class ImageAdjuster {
                     if (trulyNeutral) {
                         if (this.debug) console.log("apply(): Todos los valores son neutros (incluido el ruido), estado limpio.");
                         if (callback) callback(true);
+                        this._isApplying = false;
                         return;
                     }
                     
@@ -180,6 +201,7 @@ class ImageAdjuster {
                         cropperViewBox.style.filter = filters;
                         // No necesitamos overlay ni listeners para CSS
                         if (callback) callback(true);
+                        this._isApplying = false;
                         return;
                     }
                     
@@ -187,19 +209,25 @@ class ImageAdjuster {
                     if (this.debug) console.log("apply(): Aplicando efectos avanzados mediante overlay (incluye ruido si está activo)");
                     // Pasar el container es importante
                     if (cropperContainer) {
-                        this.applyOverlayEffects(cropper, cropperViewBox, cropperContainer, callback);
+                        this.applyOverlayEffects(cropper, cropperViewBox, cropperContainer, (success) => {
+                            if (callback) callback(success);
+                            this._isApplying = false;
+                        });
                     } else {
                         if (this.debug) console.error("apply(): No se encontró cropper-container para aplicar overlay");
                         if (callback) callback(false);
+                        this._isApplying = false;
                     }
                 } catch (error) {
                     console.error('Error en apply() (fase secundaria):', error);
                     if (callback) callback(false);
+                    this._isApplying = false;
                 }
-            }, 20); // Aumentado a 20ms para permitir que el cropper actualice completamente
+            }, 30); // Aumentado a 30ms para permitir que el cropper actualice completamente
         } catch (error) {
             console.error('Error en apply() (fase inicial):', error);
             if (callback) callback(false);
+            this._isApplying = false;
         }
     }
     
@@ -377,27 +405,44 @@ class ImageAdjuster {
             let updateTimeout = null; // Timeout unificado para debounce
         
             // --- FUNCIÓN CENTRALIZADA PARA REDIBUJAR CON DEBOUNCE --- 
+            let isRedrawInProgress = false; // Flag to track if a redraw is already happening
             const debouncedRedraw = () => {
+                // Si ya hay un redraw en progreso o un timeout pendiente, no hacer nada
+                if (isRedrawInProgress) {
+                    if (self.debug) console.log("Debounced Redraw: Omitido - ya hay un redraw en progreso");
+                    return;
+                }
+                
                 if (updateTimeout) {
                     clearTimeout(updateTimeout);
                 }
+                
                 updateTimeout = setTimeout(() => {
                     if (self.debug) console.log("Debounced Redraw: Ejecutando...");
-                    redrawAndUpdateOverlay(); // Llamar a la función de redibujado real
-                    updateTimeout = null; // Limpiar referencia de timeout
-                }, 250); // Mantener debounce
+                    
+                    // Marcar inicio del redraw
+                    isRedrawInProgress = true;
+                    
+                    // Llamar a la función de redibujado real
+                    redrawAndUpdateOverlay(() => {
+                        // Callback cuando termine el redraw
+                        isRedrawInProgress = false;
+                        updateTimeout = null;
+                    });
+                }, 350); // Aumentado para reducir frecuencia de redraws
             };
 
             // --- FUNCIÓN INTERNA PARA REDIBUJAR (LA LÓGICA REAL) --- 
-            const redrawAndUpdateOverlay = () => {
+            const redrawAndUpdateOverlay = (onComplete) => {
                 if (self.debug) console.log("redrawAndUpdateOverlay: Iniciando redibujado");
                 // Asegurarse que el overlay aún existe antes de continuar
                 const currentOverlay = cropBox.querySelector('.image-adjuster-overlay');
                 if (!currentOverlay) {
                     if (self.debug) console.error("redrawAndUpdateOverlay: Overlay no encontrado!");
                     if (callback) callback(false);
-                 return;
-            }
+                    if (onComplete) onComplete();
+                    return;
+                }
 
                 try {
                     const currentViewBox = document.querySelector('.cropper-view-box'); 
@@ -407,8 +452,9 @@ class ImageAdjuster {
                              if (self.debug) console.warn("redrawAndUpdateOverlay: ViewBox con dimensiones 0, omitiendo redibujo.");
                              currentOverlay.style.display = 'none';
                              if (callback) callback(false);
-                 return;
-            }
+                             if (onComplete) onComplete();
+                             return;
+                        }
 
                         // Actualizar tamaño del canvas existente
                         currentOverlay.width = updatedViewBoxRect.width;
@@ -438,20 +484,24 @@ class ImageAdjuster {
                             currentOverlay.style.display = 'block'; 
                             if (self.debug) console.log("redrawAndUpdateOverlay: Overlay actualizado y mostrado");
                             if (callback) callback(true); // Notify that processing is complete
+                            if (onComplete) onComplete();
                         } else {
                              if (self.debug) console.error("redrawAndUpdateOverlay: No se pudo obtener newCroppedCanvas");
                              currentOverlay.style.display = 'none'; 
                              if (callback) callback(false);
+                             if (onComplete) onComplete();
                         }
                     } else {
                         if (self.debug) console.error("redrawAndUpdateOverlay: No se encontró viewBox");
                         if(currentOverlay) currentOverlay.style.display = 'none';
                         if (callback) callback(false);
+                        if (onComplete) onComplete();
                     }
                 } catch(error) {
                      console.error("Error dentro de redrawAndUpdateOverlay:", error);
                      if(currentOverlay) currentOverlay.style.display = 'none';
                      if (callback) callback(false);
+                     if (onComplete) onComplete();
                 }
             };
             // --- FIN FUNCIONES INTERNAS --- 
@@ -461,13 +511,39 @@ class ImageAdjuster {
                 if (self.debug) console.log("Event: cropstart - Ocultando overlay");
                 const existingOverlay = cropBox.querySelector('.image-adjuster-overlay');
                 if (existingOverlay) existingOverlay.style.display = 'none';
-                if (updateTimeout) clearTimeout(updateTimeout);
-                updateTimeout = null;
+                
+                // Cancelar cualquier redibujado pendiente
+                if (updateTimeout) {
+                    clearTimeout(updateTimeout);
+                    updateTimeout = null;
+                }
+                
+                // Resetear flag si hay un redraw en progreso
+                isRedrawInProgress = false;
             };
 
             this._cropEndListener = () => {
+                // Evitar múltiples actualizaciones - usar una bandera temporal
+                const lastCropEndTime = self._lastCropEndTime || 0;
+                const now = Date.now();
+                
+                // Si pasaron menos de 200ms desde el último cropend, ignorar este evento
+                if (now - lastCropEndTime < 200) {
+                    if (self.debug) console.log("Event: cropend - Ignorado (demasiado rápido)");
+                    return;
+                }
+                
+                self._lastCropEndTime = now;
+                
                 if (self.debug) console.log("Event: cropend - Programando redibujo debounced");
-                debouncedRedraw(); // Usar la función centralizada con debounce
+                
+                // Solo redibuja si los ajustes no son neutrales o hay ruido activo
+                const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+                const noiseIntensity = noiseLevelSelect ? parseInt(noiseLevelSelect.value, 10) : 0;
+                
+                if (!self.isNeutral() || noiseIntensity > 0) {
+                    debouncedRedraw(); // Usar la función centralizada con debounce
+                }
             };
             
             this._zoomListener = (event) => {
@@ -478,9 +554,27 @@ class ImageAdjuster {
                       if (self.debug) console.log("Event: zoom detectado - Ocultando overlay");
                       existingOverlay.style.display = 'none';
                  }
-                 // Programar el redibujo debounced para cuando termine el zoom
-                 if (self.debug) console.log("Event: zoom - Programando redibujo debounced");
-                 debouncedRedraw(); 
+                 
+                 // Evitar actualizaciones excesivas durante zoom
+                 const now = Date.now();
+                 const lastZoomTime = self._lastZoomTime || 0;
+                 
+                 // Limitar la frecuencia de las actualizaciones de zoom
+                 if (now - lastZoomTime < 300) {
+                     return;
+                 }
+                 
+                 self._lastZoomTime = now;
+                 
+                 // Solo programar redibujado si hay ajustes activos
+                 const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+                 const noiseIntensity = noiseLevelSelect ? parseInt(noiseLevelSelect.value, 10) : 0;
+                 
+                 if (!self.isNeutral() || noiseIntensity > 0) {
+                     // Programar el redibujo debounced para cuando termine el zoom
+                     if (self.debug) console.log("Event: zoom - Programando redibujo debounced");
+                     debouncedRedraw();
+                 }
             };
 
             // --- ATTACH LISTENERS --- 
@@ -505,10 +599,19 @@ class ImageAdjuster {
      * @param {Cropper} cropper - Instancia del cropper
      */
     redrawOverlay(cropper) {
+        // Evitar llamadas recursivas o demasiado frecuentes
+        const now = Date.now();
+        if (this._lastRedrawTime && now - this._lastRedrawTime < 100) {
+            if (this.debug) console.log("redrawOverlay: Demasiadas llamadas frecuentes, omitiendo.");
+            return;
+        }
+        this._lastRedrawTime = now;
+        
         if (!cropper || !cropper.ready) {
             if (this.debug) console.log("redrawOverlay: Cropper no listo.");
             return;
         }
+        
         const container = document.querySelector('.cropper-container');
         const cropBox = container?.querySelector('.cropper-crop-box');
         const overlay = cropBox?.querySelector('.image-adjuster-overlay');
@@ -521,8 +624,16 @@ class ImageAdjuster {
         const onlyNoiseActive = this.isNeutral() && noiseIntensity > 0;
         const anyAdjustments = !this.isNeutral() || noiseIntensity > 0;
         
+        // Skip redraw if no adjustments or noise are active
+        if (!anyAdjustments) {
+            if (this.debug) console.log("redrawOverlay: Sin ajustes activos, omitiendo redibujado.");
+            return;
+        }
+        
         // Log for diagnosis
-        console.log(`redrawOverlay: noise=${noiseIntensity}, onlyNoise=${onlyNoiseActive}, anyAdjust=${anyAdjustments}`);
+        if (this.debug) {
+            console.log(`redrawOverlay: noise=${noiseIntensity}, onlyNoise=${onlyNoiseActive}, anyAdjust=${anyAdjustments}`);
+        }
         
         if (overlay && cropBox) {
              if (this.debug) console.log("redrawOverlay: Forzando redibujado...");
@@ -531,6 +642,13 @@ class ImageAdjuster {
                  const currentViewBox = document.querySelector('.cropper-view-box');
                  if (currentViewBox) {
                      const updatedViewBoxRect = currentViewBox.getBoundingClientRect();
+                     
+                     // Validar dimensiones del viewBox
+                     if (updatedViewBoxRect.width <= 0 || updatedViewBoxRect.height <= 0) {
+                         if (this.debug) console.log("redrawOverlay: ViewBox con dimensiones inválidas, omitiendo.");
+                         return;
+                     }
+                     
                      overlay.width = updatedViewBoxRect.width;
                      overlay.height = updatedViewBoxRect.height;
                      overlay.style.width = `${updatedViewBoxRect.width}px`;
@@ -576,10 +694,13 @@ class ImageAdjuster {
              // Si no hay overlay pero hay ajustes activos (incluido solo ruido),
              // debemos asegurarnos de que se cree correctamente
              if (cropper && cropper.ready) {
-                 // Use apply with a small delay to prevent potential recursion
+                 // Usar setTimeout pero con un retraso mayor y verificar si el cropper sigue disponible
                  setTimeout(() => {
-                     this.apply(cropper);
-                 }, 10);
+                     // Verificar nuevamente si el cropper sigue disponible antes de aplicar
+                     if (cropper && cropper.ready) {
+                         this.apply(cropper);
+                     }
+                 }, 50);
              }
          } else {
              if (this.debug) console.log("redrawOverlay: No se encontró overlay y no hay ajustes activos.");
@@ -848,6 +969,9 @@ export function initImageAdjustments(cropper) {
         
         // Add event listener to refresh LUTs when crop area changes (including aspect ratio)
         if (cropper.element) {
+            // Shared debounce timeout for all crop-related events
+            let cropChangeDebounceTimeout = null;
+            
             cropper.element.addEventListener('crop', function onCropEvent() {
                 // Get noise level from DOM
                 const noiseLevelSelect = document.getElementById('noiseLevelSelect');
@@ -859,11 +983,11 @@ export function initImageAdjustments(cropper) {
                 }
                 
                 // Use debouncing to avoid excessive updates
-                if (window.cropDebounceTimeout) {
-                    clearTimeout(window.cropDebounceTimeout);
+                if (cropChangeDebounceTimeout) {
+                    clearTimeout(cropChangeDebounceTimeout);
                 }
                 
-                window.cropDebounceTimeout = setTimeout(() => {
+                cropChangeDebounceTimeout = setTimeout(() => {
                     console.log('Crop area changed - redrawing LUT/noise overlay');
                     // Show processing indicator
                     if (processingIndicator) {
@@ -877,7 +1001,9 @@ export function initImageAdjustments(cropper) {
                             processingIndicator.classList.remove('show');
                         }
                     });
-                }, 150); // Reduced debounce time for better responsiveness
+                    // Reset the timeout reference
+                    cropChangeDebounceTimeout = null;
+                }, 300); // Increased debounce time to avoid multiple triggers
             });
             console.log("Added global crop event listener for LUT/noise reapplication");
         }
