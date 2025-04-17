@@ -607,7 +607,7 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
 }
 
 /**
- * Dibuja el logo overlay en el canvas final
+ * Dibuja el logo overlay en el canvas final con máxima calidad
  * @param {CanvasRenderingContext2D} ctx - Contexto del canvas donde dibujar
  * @param {number} canvasWidth - Ancho del canvas
  * @param {number} canvasHeight - Alto del canvas
@@ -621,6 +621,9 @@ function drawLogoOverlayOnCanvas(ctx, canvasWidth, canvasHeight) {
     // Obtener datos necesarios
     const logo = window.logoOverlay;
     const cropBoxData = cropper.getCropBoxData();
+    
+    // Usar preferentemente la versión de alta calidad si está disponible
+    const logoImg = logo.highQualityLogo || logo.logoImage;
     
     // Calcular la posición y escala del logo en el canvas final
     const scaleX = canvasWidth / cropBoxData.width;
@@ -636,47 +639,121 @@ function drawLogoOverlayOnCanvas(ctx, canvasWidth, canvasHeight) {
     const scaledWidth = logo.settings.width * scaleX;
     const scaledHeight = logo.settings.height * scaleY;
     
-    // Crear un canvas temporal de alta resolución
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d', { alpha: true });
+    // Factor de supersampling - aumentamos el factor de 2 a 4 para mayor calidad
+    const supersamplingFactor = 4;
     
-    // Añadir espacio adicional para la rotación
-    const padding = Math.max(scaledWidth, scaledHeight) * 0.5;
-    tempCanvas.width = scaledWidth + padding * 2;
-    tempCanvas.height = scaledHeight + padding * 2;
+    // Crear un canvas intermedio de alta resolución para mejorar calidad
+    const hiResCanvas = document.createElement('canvas');
+    const hiResCtx = hiResCanvas.getContext('2d', { alpha: true });
     
-    // Dibujar con alta calidad
-    tempCtx.imageSmoothingEnabled = true;
-    tempCtx.imageSmoothingQuality = 'high';
+    // Establecer tamaño con supersampling y un padding suficiente para la rotación
+    const padding = Math.max(scaledWidth, scaledHeight) * 0.6; // Incrementado el padding para evitar recortes
+    hiResCanvas.width = (scaledWidth + padding * 2) * supersamplingFactor;
+    hiResCanvas.height = (scaledHeight + padding * 2) * supersamplingFactor;
     
-    // Aplicar transformaciones en el canvas temporal
-    tempCtx.save();
+    // Desactivar suavizado temporalmente para dibujo inicial (previene blur en bordes nítidos)
+    hiResCtx.imageSmoothingEnabled = false;
     
-    // Centrar, rotar y dibujar el logo
-    tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
-    tempCtx.rotate(logo.settings.rotation * Math.PI / 180);
-    tempCtx.translate(-scaledWidth / 2, -scaledHeight / 2);
+    // Aplicar transformaciones en alta resolución
+    hiResCtx.save();
     
-    // Dibujar el logo en el canvas temporal
-    tempCtx.drawImage(
-        logo.logoImage,
+    // Centrar, rotar y dibujar el logo (con los factores de supersampling)
+    hiResCtx.translate(hiResCanvas.width / 2, hiResCanvas.height / 2);
+    hiResCtx.rotate(logo.settings.rotation * Math.PI / 180);
+    hiResCtx.translate(-scaledWidth * supersamplingFactor / 2, -scaledHeight * supersamplingFactor / 2);
+    
+    // Dibujar el logo con alta resolución
+    hiResCtx.drawImage(
+        logoImg,
         0, 0,
-        logo.logoImage.naturalWidth, logo.logoImage.naturalHeight,
+        logoImg.naturalWidth, logoImg.naturalHeight,
         0, 0,
-        scaledWidth, scaledHeight
+        scaledWidth * supersamplingFactor, 
+        scaledHeight * supersamplingFactor
     );
     
-    tempCtx.restore();
+    hiResCtx.restore();
     
-    // Dibujar el canvas temporal en el canvas final
+    // Aplicar un filtro de nitidez original si es necesario
+    try {
+        // Solo aplicar nitidez si la imagen se redujo significativamente
+        if (scaledWidth < logoImg.naturalWidth * 0.8) {
+            applySharpening(hiResCtx, 0, 0, hiResCanvas.width, hiResCanvas.height);
+        }
+    } catch (e) {
+        console.log("Original sharpening not applied:", e);
+    }
+    
+    // Dibujar en el canvas final con alta calidad
     ctx.save();
+    
+    // Configurar mezcla con alpha para preservar transparencia
+    ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = logo.settings.opacity / 100;
+    
+    // Establecer suavizado de alta calidad
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
+    // Usar el canvas de alta resolución como fuente
     ctx.drawImage(
-        tempCanvas, 
-        0, 0, tempCanvas.width, tempCanvas.height,
-        scaledX - padding, scaledY - padding, tempCanvas.width, tempCanvas.height
+        hiResCanvas,
+        0, 0, hiResCanvas.width, hiResCanvas.height,
+        scaledX - padding, scaledY - padding, 
+        scaledWidth + padding * 2, scaledHeight + padding * 2
     );
+    
     ctx.restore();
+}
+
+/**
+ * Aplica un filtro de nitidez a una sección del canvas
+ * @param {CanvasRenderingContext2D} ctx - Contexto del canvas
+ * @param {number} x - Posición X inicial
+ * @param {number} y - Posición Y inicial
+ * @param {number} width - Ancho del área
+ * @param {number} height - Alto del área
+ */
+function applySharpening(ctx, x, y, width, height) {
+    // Obtener los datos de imagen
+    const imageData = ctx.getImageData(x, y, width, height);
+    const data = imageData.data;
+    const factor = 0.5; // Intensidad del filtro de nitidez
+    const kernel = [
+        0, -factor, 0,
+        -factor, 1 + 4 * factor, -factor,
+        0, -factor, 0
+    ];
+    
+    // Crear un array temporal para los resultados
+    const tempData = new Uint8ClampedArray(data.length);
+    tempData.set(data);
+    
+    // Aplicar el kernel de nitidez
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            for (let c = 0; c < 3; c++) { // Solo procesar R, G, B (no alpha)
+                const idx = (y * width + x) * 4 + c;
+                let sum = 0;
+                
+                // Aplicar el kernel de convolución
+                sum += data[(y - 1) * width * 4 + x * 4 + c] * kernel[1];
+                sum += data[y * width * 4 + (x - 1) * 4 + c] * kernel[3];
+                sum += data[y * width * 4 + x * 4 + c] * kernel[4];
+                sum += data[y * width * 4 + (x + 1) * 4 + c] * kernel[5];
+                sum += data[(y + 1) * width * 4 + x * 4 + c] * kernel[7];
+                
+                tempData[idx] = Math.max(0, Math.min(255, sum));
+            }
+        }
+    }
+    
+    // Escribir los datos de vuelta al canvas
+    for (let i = 0; i < data.length; i++) {
+        data[i] = tempData[i];
+    }
+    
+    ctx.putImageData(imageData, x, y);
 }
 
 // Función auxiliar para crear el canvas de tamaño completo (usada en fallbacks y BMP)

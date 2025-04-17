@@ -610,3 +610,20 @@ input[type="range"]:hover::-moz-range-thumb {
   z-index: 60 !important;
 }
 
+/* Custom styles for slider thumb */
+.slider-thumb-green::-webkit-slider-thumb {
+  background-color: #10b981; /* Green accent */
+}
+
+.slider-thumb-green::-moz-range-thumb {
+  background-color: #10b981; /* Green accent */
+}
+
+.slider-thumb-green:hover::-webkit-slider-thumb {
+  background-color: #059669; /* Darker green on hover */
+}
+
+.slider-thumb-green:hover::-moz-range-thumb {
+  background-color: #059669; /* Darker green on hover */
+}
+

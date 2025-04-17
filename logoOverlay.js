@@ -169,14 +169,38 @@ class LogoOverlay {
      * @param {string} src - URL de la imagen del logo
      */
     preloadHighQualityLogo(src) {
+        // Eliminar la versión anterior si existe
+        if (this.highQualityLogo) {
+            this.highQualityLogo.onload = null;
+            this.highQualityLogo.onerror = null;
+            this.highQualityLogo = null;
+        }
+        
         // Crear una imagen adicional de alta calidad que nunca se muestra
         // pero estará disponible para el proceso de exportación
         this.highQualityLogo = new Image();
-        this.highQualityLogo.src = src;
+        
+        // Agregar manejadores de eventos para asegurar la carga correcta
+        this.highQualityLogo.onload = () => {
+            console.log("Logo de alta calidad cargado correctamente:", 
+                `${this.highQualityLogo.naturalWidth}x${this.highQualityLogo.naturalHeight}`);
+        };
+        
+        this.highQualityLogo.onerror = (e) => {
+            console.error("Error al cargar el logo de alta calidad:", e);
+            // Si falla, eliminamos la referencia para que se use el logo normal
+            this.highQualityLogo = null;
+        };
+        
+        // Configurar para máxima calidad
         this.highQualityLogo.decoding = 'sync';
         this.highQualityLogo.crossOrigin = 'anonymous';
         
-        // No es necesario añadirla al DOM
+        // Configuraciones adicionales para mejorar calidad
+        this.highQualityLogo.setAttribute('importance', 'high');
+        
+        // Establecer el origen después de configurar los manejadores
+        this.highQualityLogo.src = src;
     }
     
     /**
@@ -931,10 +955,6 @@ export function initLogoOverlay(cropper) {
     const logoControls = document.getElementById('logoControls');
     const uploadLogoBtn = document.getElementById('uploadLogoBtn');
     const logoInput = document.getElementById('logoInput');
-    const moveLogoBtn = document.getElementById('moveLogo');
-    const resizeLogoBtn = document.getElementById('resizeLogo');
-    const rotateLogoBtn = document.getElementById('rotateLogo');
-    const resetLogoBtn = document.getElementById('resetLogo');
     const logoOpacitySlider = document.getElementById('logoOpacity');
     
     // Toggle de visibilidad del logo
@@ -963,46 +983,6 @@ export function initLogoOverlay(cropper) {
                     await logoOverlay.createLogo(cropper, file);
                 }
             }
-        });
-    }
-    
-    // Controles de manipulación desde el sidebar
-    if (moveLogoBtn) {
-        moveLogoBtn.addEventListener('click', () => {
-            // Mostrar los controles si están ocultos
-            if (logoOverlay.controlsContainer && 
-                (logoOverlay.controlsContainer.style.display === 'none' || !logoOverlay.controlsContainer.style.display)) {
-                logoOverlay.toggleControls();
-            }
-            logoOverlay.startMove(true);
-        });
-    }
-    
-    if (resizeLogoBtn) {
-        resizeLogoBtn.addEventListener('click', () => {
-            // Mostrar los controles si están ocultos
-            if (logoOverlay.controlsContainer && 
-                (logoOverlay.controlsContainer.style.display === 'none' || !logoOverlay.controlsContainer.style.display)) {
-                logoOverlay.toggleControls();
-            }
-            logoOverlay.startResize(true);
-        });
-    }
-    
-    if (rotateLogoBtn) {
-        rotateLogoBtn.addEventListener('click', () => {
-            // Mostrar los controles si están ocultos
-            if (logoOverlay.controlsContainer && 
-                (logoOverlay.controlsContainer.style.display === 'none' || !logoOverlay.controlsContainer.style.display)) {
-                logoOverlay.toggleControls();
-            }
-            logoOverlay.startRotate(true);
-        });
-    }
-    
-    if (resetLogoBtn) {
-        resetLogoBtn.addEventListener('click', () => {
-            logoOverlay.resetLogo(cropper);
         });
     }
     
