@@ -256,7 +256,7 @@ async function handleImageLoad(file) {
             cropBoxMovable: true,
             cropBoxResizable: true,
             toggleDragModeOnDblclick: true,
-            ready: function () { // Usar el evento ready oficial de Cropper.js
+            ready: function () {
                 // Habilitar el botón de recorte ahora que el cropper está listo
                 cropButton.disabled = false;
 
@@ -303,7 +303,14 @@ async function handleImageLoad(file) {
                         window.gridGuides.setGuideCanvas(guideCanvas);
                     }
                 }
-            } // Fin del 'ready' callback
+                
+                // Redraw any image adjustments after the cropper is ready
+                if (window.imageAdjuster) {
+                    setTimeout(() => {
+                        window.imageAdjuster.redrawOverlay(cropper);
+                    }, 200);
+                }
+            }
         });
 
     } catch (error) {
@@ -862,21 +869,52 @@ function applyNoiseToSubRectangle(sourceData, sourceTotalWidth, sx, sy, width, h
     }
 }
 
+// Common function for all aspect ratio button handlers
+function handleAspectRatioChange(ratio) {
+    // 1. Store the current adjustment settings
+    const hasAdjustments = window.imageAdjuster && !window.imageAdjuster.isNeutral();
+    
+    // 2. Force cleanup of everything
+    if (window.imageAdjuster) {
+        console.log(`Removing overlays before setting aspect ratio to ${ratio}`);
+        window.imageAdjuster.removeOverlay();
+    }
+    
+    // 3. Apply the new aspect ratio
+    cropper.setAspectRatio(ratio);
+    
+    // 4. Clear any previous timeouts
+    if (window.aspectRatioTimeout) {
+        clearTimeout(window.aspectRatioTimeout);
+    }
+    
+    // 5. Set a timeout to reapply adjustments after the aspect ratio change
+    window.aspectRatioTimeout = setTimeout(() => {
+        if (hasAdjustments && window.imageAdjuster) {
+            console.log(`Reapplying adjustments after aspect ratio change to ${ratio}`);
+            // Force remove any old overlays that might have appeared
+            window.imageAdjuster.removeOverlay();
+            // Apply the adjustments from scratch
+            window.imageAdjuster.apply(cropper);
+        }
+    }, 200); // Longer timeout for more reliability
+}
+
+// Set up all aspect ratio button click handlers
 document.getElementById('aspectRatio169').addEventListener('click', () => {
-    cropper.setAspectRatio(16 / 9);
+    handleAspectRatioChange(16/9);
 });
 
 document.getElementById('aspectRatio43').addEventListener('click', () => {
-    cropper.setAspectRatio(4 / 3);
+    handleAspectRatioChange(4/3);
 });
 
 document.getElementById('aspectRatio11').addEventListener('click', () => {
-    cropper.setAspectRatio(1);
+    handleAspectRatioChange(1);
 });
 
 document.getElementById('aspectRatioFree').addEventListener('click', () => {
-    // Eliminar cualquier relación de aspecto fija
-    cropper.setAspectRatio(NaN);
+    handleAspectRatioChange(NaN);
 });
 
 // Drag and Drop Functionality
