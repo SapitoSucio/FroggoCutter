@@ -450,14 +450,26 @@ input[type="range"]:hover::-moz-range-thumb {
 /* Logo overlay styles */
 #logoOverlay {
   position: absolute;
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 14;
   transition: opacity 0.3s ease;
+  transform-origin: center center;
+  /* Mejorar la calidad de renderizado */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: high-quality;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 0 1px rgba(0,0,0,0.5));
 }
 
 #logoOverlay.draggable {
   pointer-events: auto;
-  cursor: move;
+  cursor: grab;
+}
+
+#logoOverlay.draggable:active {
+  cursor: grabbing;
 }
 
 #logoOverlay.resizing {
@@ -468,6 +480,92 @@ input[type="range"]:hover::-moz-range-thumb {
 #logoOverlay.rotating {
   pointer-events: auto;
   cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>'), auto;
+}
+
+/* Estilos para los controles del logo overlay */
+.logo-controls-container {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  padding: 5px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: opacity 0.3s ease;
+}
+
+.logo-control-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.logo-control-btn:hover {
+  transform: scale(1.1);
+}
+
+.logo-control-btn[data-action="move"]:hover,
+.logo-control-btn[data-action="resize"]:hover,
+.logo-control-btn[data-action="rotate"]:hover {
+  background-color: #10b981;
+  color: white;
+}
+
+.logo-control-btn[data-action="delete"] {
+  background-color: #ef4444;
+  color: white;
+}
+
+.logo-control-btn[data-action="delete"]:hover {
+  background-color: #dc2626;
+}
+
+/* Tooltip de edición */
+.editing-tooltip {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 100;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+.editing-tooltip.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.editing-tooltip .mode {
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.editing-tooltip .key-hint {
+  font-size: 12px;
+  opacity: 0.8;
 }
 
 /* Login box overlay styles */

@@ -447,6 +447,20 @@ async function generateJpegFromCanvas(imageData, preciseCropData, isFullSelectio
         }
         // --- End Apply Image Adjustments ---
 
+        // --- Add Logo Overlay to final canvas ---
+        if (window.logoOverlay && window.logoOverlay.settings.visible && window.logoOverlay.logoImage) {
+            try {
+                console.log("Adding logo overlay to JPEG...");
+                // Calculate logo position and size relative to final canvas
+                drawLogoOverlayOnCanvas(finalCtx, finalCanvas.width, finalCanvas.height);
+                console.log("Logo overlay added successfully to JPEG.");
+            } catch (error) {
+                console.error("Error adding logo overlay to JPEG:", error);
+                // Continue without logo if error occurs
+            }
+        }
+        // --- End Add Logo Overlay ---
+
         finalCanvas.toBlob((blob) => {
             try {
                 if (blob) {
@@ -472,7 +486,8 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
             const scaleY = originalImageHeight / imageData.naturalHeight;
             const finalWidth = Math.round(preciseCropData.width * scaleX);
             const finalHeight = Math.round(preciseCropData.height * scaleY);
-            const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: true };
+            // Cambiar imageSmoothingEnabled a false para evitar que se vea borroso
+            const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: false };
             finalCanvas = cropper.getCroppedCanvas(cropOptions);
             if (Math.abs(finalCanvas.width - finalWidth) > 1 || Math.abs(finalCanvas.height - finalHeight) > 1) {
                 console.warn(`Dimensiones del canvas recortado difieren ligeramente de las calculadas.`);
@@ -485,6 +500,10 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
 
         // --- Apply Image Adjustments ---
         const finalCtx = finalCanvas.getContext('2d', { willReadFrequently: true });
+        // Establecer alta calidad para el canvas final
+        finalCtx.imageSmoothingEnabled = true;
+        finalCtx.imageSmoothingQuality = 'high';
+        
         if (!imageAdjuster.isNeutral()) {
             console.log("Applying adjustments to BMP canvas before splitting...");
             try {
@@ -498,6 +517,20 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
             }
         }
         // --- End Apply Image Adjustments ---
+
+        // --- Add Logo Overlay to final canvas ---
+        if (window.logoOverlay && window.logoOverlay.settings.visible && window.logoOverlay.logoImage) {
+            try {
+                console.log("Adding logo overlay to BMP...");
+                // Draw logo on the canvas before splitting
+                drawLogoOverlayOnCanvas(finalCtx, finalCanvas.width, finalCanvas.height);
+                console.log("Logo overlay added successfully to BMP.");
+            } catch (error) {
+                console.error("Error adding logo overlay to BMP:", error);
+                // Continue without logo if error occurs
+            }
+        }
+        // --- End Add Logo Overlay ---
 
         // Lógica existente para procesar BMP desde finalCanvas
         finalCanvas.toBlob(async (blob) => { // Callback is already async
@@ -571,6 +604,79 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
         }
         // cropButton.classList.remove('processing'); // Remove if not used
     }
+}
+
+/**
+ * Dibuja el logo overlay en el canvas final
+ * @param {CanvasRenderingContext2D} ctx - Contexto del canvas donde dibujar
+ * @param {number} canvasWidth - Ancho del canvas
+ * @param {number} canvasHeight - Alto del canvas
+ */
+function drawLogoOverlayOnCanvas(ctx, canvasWidth, canvasHeight) {
+    // Asegurarse de que el logo overlay está visible y existe
+    if (!window.logoOverlay || !window.logoOverlay.settings.visible || !window.logoOverlay.logoImage) {
+        return;
+    }
+
+    // Obtener datos necesarios
+    const logo = window.logoOverlay;
+    const cropBoxData = cropper.getCropBoxData();
+    
+    // Calcular la posición y escala del logo en el canvas final
+    const scaleX = canvasWidth / cropBoxData.width;
+    const scaleY = canvasHeight / cropBoxData.height;
+    
+    // Calcular la posición relativa del logo respecto al crop box
+    const relativeX = logo.settings.x - cropBoxData.left;
+    const relativeY = logo.settings.y - cropBoxData.top;
+    
+    // Calcular las dimensiones escaladas del logo
+    const scaledX = relativeX * scaleX;
+    const scaledY = relativeY * scaleY;
+    const scaledWidth = logo.settings.width * scaleX;
+    const scaledHeight = logo.settings.height * scaleY;
+    
+    // Crear un canvas temporal de alta resolución
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d', { alpha: true });
+    
+    // Añadir espacio adicional para la rotación
+    const padding = Math.max(scaledWidth, scaledHeight) * 0.5;
+    tempCanvas.width = scaledWidth + padding * 2;
+    tempCanvas.height = scaledHeight + padding * 2;
+    
+    // Dibujar con alta calidad
+    tempCtx.imageSmoothingEnabled = true;
+    tempCtx.imageSmoothingQuality = 'high';
+    
+    // Aplicar transformaciones en el canvas temporal
+    tempCtx.save();
+    
+    // Centrar, rotar y dibujar el logo
+    tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
+    tempCtx.rotate(logo.settings.rotation * Math.PI / 180);
+    tempCtx.translate(-scaledWidth / 2, -scaledHeight / 2);
+    
+    // Dibujar el logo en el canvas temporal
+    tempCtx.drawImage(
+        logo.logoImage,
+        0, 0,
+        logo.logoImage.naturalWidth, logo.logoImage.naturalHeight,
+        0, 0,
+        scaledWidth, scaledHeight
+    );
+    
+    tempCtx.restore();
+    
+    // Dibujar el canvas temporal en el canvas final
+    ctx.save();
+    ctx.globalAlpha = logo.settings.opacity / 100;
+    ctx.drawImage(
+        tempCanvas, 
+        0, 0, tempCanvas.width, tempCanvas.height,
+        scaledX - padding, scaledY - padding, tempCanvas.width, tempCanvas.height
+    );
+    ctx.restore();
 }
 
 // Función auxiliar para crear el canvas de tamaño completo (usada en fallbacks y BMP)
