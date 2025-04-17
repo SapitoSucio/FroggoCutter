@@ -19,6 +19,7 @@ const methodInfoBtn = document.getElementById('methodInfoBtn');
 // Get the new noise select dropdown and its container
 const noiseControlContainer = document.getElementById('noiseControlContainer');
 const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+const processingIndicator = document.getElementById('processingAdjustments');
 
 function handleOutputFormatChange() {
   const isTLoginFormat = outputFormatSelect.value === 't_login';
@@ -40,7 +41,26 @@ function handleOutputFormatChange() {
     noiseControlContainer.classList.remove('visible'); // Use visible class for transition
     methodInfoBtn.classList.add('hidden'); // Keep using hidden for button
     // Reset noise dropdown when hiding
+    const previousNoiseValue = noiseLevelSelect.value;
     noiseLevelSelect.value = '0'; 
+    
+    // If noise was previously active, force a preview update to remove it
+    if (cropper && imageAdjuster && previousNoiseValue !== '0') {
+      console.log("Format changed to t_login, removing noise effect from preview.");
+      // Show processing indicator
+      if (processingIndicator) {
+        processingIndicator.classList.add('show');
+      }
+      // Re-apply adjustments (will use noise=0 because dropdown was reset)
+      imageAdjuster.apply(cropper, (success) => {
+        // Hide processing indicator when complete
+        if (processingIndicator) {
+          setTimeout(() => {
+            processingIndicator.classList.remove('show');
+          }, 100); // Shorter delay needed here
+        }
+      });
+    }
   }
 
   // Controlar visibilidad y estado de selectPaletteMethod
@@ -207,6 +227,10 @@ async function handleImageLoad(file) {
       container.classList.add('fade-in');
     }, 300); // 300ms es la duración de tu transición CSS (ajusta si es diferente)
 
+    // Guardar el valor actual del noise select antes de reiniciar la UI
+    const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+    const previousNoiseValue = noiseLevelSelect.value;
+    noiseLevelSelect.value = '0';
 
     // --- Carga y dibujo de imagen (ASÍNCRONO) ---
     try {
@@ -290,6 +314,25 @@ async function handleImageLoad(file) {
                 // Inicializar módulos cuando el cropper está listo
                 if (window.initImageAdjustments) {
                     window.initImageAdjustments(cropper);
+                    
+                    // Si había noise activo, restaurarlo después de la inicialización
+                    // Usar un timeout para asegurarse de que la inicialización se completó
+                    if (previousNoiseValue !== '0') {
+                        setTimeout(() => {
+                            console.log(`Restaurando valor de ruido anterior: ${previousNoiseValue}`);
+                            noiseLevelSelect.value = previousNoiseValue;
+                            // Forzar la actualización del overlay para aplicar el ruido
+                            if (window.imageAdjuster) {
+                                const processingIndicator = document.getElementById('processingAdjustments');
+                                if (processingIndicator) processingIndicator.classList.add('show');
+                                
+                                window.imageAdjuster.apply(cropper, (success) => {
+                                    if (processingIndicator) processingIndicator.classList.remove('show');
+                                    console.log(`Ruido restaurado y aplicado: ${success}`);
+                                });
+                            }
+                        }, 300);
+                    }
                 }
                 
                 if (window.initLogoOverlay) {
@@ -384,17 +427,21 @@ async function generateJpegFromCanvas(imageData, preciseCropData, isFullSelectio
             throw new Error("Failed to create final canvas for JPEG.");
         }
 
-        // --- Apply Image Adjustments ---
+        // --- Apply Image Adjustments ---            
         const finalCtx = finalCanvas.getContext('2d', { willReadFrequently: true });
-        if (!imageAdjuster.isNeutral()) {
-            console.log("Applying adjustments to JPEG...");
+        if (!imageAdjuster.isNeutral() || (document.getElementById('noiseLevelSelect') && parseInt(document.getElementById('noiseLevelSelect').value, 10) > 0)) {
+            console.log("Applying adjustments and/or noise to JPEG...");
             try {
                 let imageData = finalCtx.getImageData(0, 0, finalCanvas.width, finalCanvas.height);
-                let modifiedImageData = imageAdjuster.applyAdjustmentsToImageData(imageData, imageAdjuster.settings);
+                // Get noise intensity for final export
+                const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+                const noiseIntensity = noiseLevelSelect ? parseInt(noiseLevelSelect.value, 10) : 0;
+                // Apply adjustments AND noise
+                let modifiedImageData = imageAdjuster.applyAdjustmentsToImageData(imageData, imageAdjuster.settings, noiseIntensity);
                 finalCtx.putImageData(modifiedImageData, 0, 0);
-                console.log("Adjustments applied successfully to JPEG.");
+                console.log("Adjustments/Noise applied successfully to JPEG.");
             } catch (error) {
-                console.error("Error applying adjustments to JPEG:", error);
+                console.error("Error applying adjustments/noise to JPEG:", error);
                 // Continue without adjustments if error occurs
             }
         }
@@ -865,6 +912,7 @@ function applyNoiseToSubRectangle(sourceData, sourceTotalWidth, sx, sy, width, h
 // Common function for all aspect ratio button handlers
 function handleAspectRatioChange(ratio) {
     const processingIndicator = document.getElementById('processingAdjustments');
+    const overlayCanvas = document.querySelector('.image-adjuster-overlay'); // Find existing overlay
     
     // 1. Show processing indicator immediately
     if (processingIndicator) {
@@ -873,33 +921,42 @@ function handleAspectRatioChange(ratio) {
     
     // 2. Check if adjustments are active BEFORE removing overlay/changing ratio
     const hasAdjustments = window.imageAdjuster && !window.imageAdjuster.isNeutral();
+    const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+    const noiseIntensity = noiseLevelSelect ? parseInt(noiseLevelSelect.value, 10) : 0;
+    const needsOverlay = hasAdjustments || noiseIntensity > 0;
     
-    // 3. Remove any existing overlay
-    if (window.imageAdjuster) {
-        window.imageAdjuster.removeOverlay();
+    // 3. Immediately HIDE any existing overlay visually
+    if (overlayCanvas) {
+        overlayCanvas.style.display = 'none'; 
+        if(window.imageAdjuster && window.imageAdjuster.debug) console.log("Aspect ratio change: Hiding overlay canvas.");
     }
     
-    // 4. Apply aspect ratio change
-    // We wrap this in a minimal timeout to allow the UI to update (show indicator, remove overlay)
-    // before the potentially blocking cropper operation.
+    // 4. Apply aspect ratio change after a minimal delay for UI update
     setTimeout(() => {
         try {
             if (cropper) {
+                 // Clean up listeners/full overlay state *before* potentially blocking aspect ratio change
+                 if (window.imageAdjuster) {
+                     window.imageAdjuster.removeOverlay(); 
+                 }
+                 
                 cropper.setAspectRatio(ratio);
                 
-                // 5. Re-apply adjustments ONLY if they were active
-                if (hasAdjustments && window.imageAdjuster) {
-                    // The apply function now handles hiding the indicator via its callback
-                    console.log(`Reapplying adjustments after aspect ratio change to ${ratio}`);
-                    window.imageAdjuster.apply(cropper, (success) => {
-                        // Callback in apply hides the indicator
-                        if (!success) {
-                            // If apply fails, ensure indicator is hidden
-                            if (processingIndicator) {
-                                processingIndicator.classList.remove('show');
+                // 5. Re-apply adjustments ONLY if they were active (or noise was on)
+                if (needsOverlay && window.imageAdjuster) {
+                    // Use a slightly longer timeout to ensure the cropper has fully updated
+                    setTimeout(() => {
+                        console.log(`Reapplying adjustments/noise after aspect ratio change to ${ratio}`);
+                        window.imageAdjuster.apply(cropper, (success) => {
+                            // Callback in apply hides the indicator
+                            if (!success) {
+                                // If apply fails, ensure indicator is hidden
+                                if (processingIndicator) {
+                                    processingIndicator.classList.remove('show');
+                                }
                             }
-                        }
-                    });
+                        });
+                    }, 50); // Slight delay to ensure cropper is ready
                 } else {
                     // If no adjustments needed re-applying, hide indicator now
                     if (processingIndicator) {

@@ -138,6 +138,7 @@ class ImageAdjuster {
             this.removeOverlay();
             
             // Esperar un instante para que la limpieza sea visible antes de aplicar nuevos ajustes
+            // Aumentado a 20ms para dar tiempo al cropper después de cambios de aspect ratio
             setTimeout(() => {
                 try {
                     // Encontrar elementos relevantes
@@ -155,14 +156,24 @@ class ImageAdjuster {
                         return;
                     }
                     
-                    // Si todos los valores son neutros, terminamos aquí (ya limpiamos)
-                    if (this.isNeutral()) {
-                        if (this.debug) console.log("apply(): Todos los valores son neutros, estado limpio.");
+                    // Check if adjustments are neutral AND noise is zero
+                    const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+                    const noiseIntensity = noiseLevelSelect ? parseInt(noiseLevelSelect.value, 10) : 0;
+                    const trulyNeutral = this.isNeutral() && noiseIntensity === 0;
+                    
+                    // Si hay ruido activo, log para diagnóstico
+                    if (noiseIntensity > 0) {
+                        console.log(`apply(): Ruido activo con intensidad ${noiseIntensity}`);
+                    }
+                    
+                    // Si todos los valores son neutros Y no hay ruido, terminamos aquí (ya limpiamos)
+                    if (trulyNeutral) {
+                        if (this.debug) console.log("apply(): Todos los valores son neutros (incluido el ruido), estado limpio.");
                         if (callback) callback(true);
                         return;
                     }
                     
-                    // ENFOQUE 1: Para efectos básicos usamos filtros CSS
+                    // ENFOQUE 1: Para efectos básicos usamos filtros CSS (Should not happen due to canUseSimpleCSSFilters being false)
                     if (this.canUseSimpleCSSFilters()) {
                         const filters = this.generateCSSFilters();
                         if (this.debug) console.log("apply(): Aplicando filtros CSS simples:", filters);
@@ -172,8 +183,8 @@ class ImageAdjuster {
                         return;
                     }
                     
-                    // ENFOQUE 2: Para efectos avanzados (LUTs, vibrance) usamos overlay
-                    if (this.debug) console.log("apply(): Aplicando efectos avanzados mediante overlay");
+                    // ENFOQUE 2: Usamos overlay para todos los ajustes visuales (incluido solo ruido)
+                    if (this.debug) console.log("apply(): Aplicando efectos avanzados mediante overlay (incluye ruido si está activo)");
                     // Pasar el container es importante
                     if (cropperContainer) {
                         this.applyOverlayEffects(cropper, cropperViewBox, cropperContainer, callback);
@@ -185,7 +196,7 @@ class ImageAdjuster {
                     console.error('Error en apply() (fase secundaria):', error);
                     if (callback) callback(false);
                 }
-            }, 0); // Timeout mínimo para permitir que la UI se actualice
+            }, 20); // Aumentado a 20ms para permitir que el cropper actualice completamente
         } catch (error) {
             console.error('Error en apply() (fase inicial):', error);
             if (callback) callback(false);
@@ -405,6 +416,10 @@ class ImageAdjuster {
                         currentOverlay.style.width = `${updatedViewBoxRect.width}px`;
                         currentOverlay.style.height = `${updatedViewBoxRect.height}px`;
 
+                        // Get current noise level from the DOM
+                        const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+                        const noiseIntensity = noiseLevelSelect ? parseInt(noiseLevelSelect.value, 10) : 0;
+
                         const newCroppedCanvas = cropper.getCroppedCanvas({
                             width: updatedViewBoxRect.width * window.devicePixelRatio,
                             height: updatedViewBoxRect.height * window.devicePixelRatio,
@@ -416,7 +431,8 @@ class ImageAdjuster {
                             newCtx.clearRect(0, 0, currentOverlay.width, currentOverlay.height);
                             newCtx.drawImage(newCroppedCanvas, 0, 0, currentOverlay.width, currentOverlay.height);
                             let newImageData = newCtx.getImageData(0, 0, currentOverlay.width, currentOverlay.height);
-                            let newModifiedImageData = self.applyAdjustmentsToImageData(newImageData, self.settings);
+                            // Pass noise intensity to the adjustment function
+                            let newModifiedImageData = self.applyAdjustmentsToImageData(newImageData, self.settings, noiseIntensity);
                             newCtx.putImageData(newModifiedImageData, 0, 0);
 
                             currentOverlay.style.display = 'block'; 
@@ -497,6 +513,17 @@ class ImageAdjuster {
         const cropBox = container?.querySelector('.cropper-crop-box');
         const overlay = cropBox?.querySelector('.image-adjuster-overlay');
         
+        // Get current noise level from the DOM - Moved here for early check
+        const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+        const noiseIntensity = noiseLevelSelect ? parseInt(noiseLevelSelect.value, 10) : 0;
+        
+        // Check if any adjustments or noise is active
+        const onlyNoiseActive = this.isNeutral() && noiseIntensity > 0;
+        const anyAdjustments = !this.isNeutral() || noiseIntensity > 0;
+        
+        // Log for diagnosis
+        console.log(`redrawOverlay: noise=${noiseIntensity}, onlyNoise=${onlyNoiseActive}, anyAdjust=${anyAdjustments}`);
+        
         if (overlay && cropBox) {
              if (this.debug) console.log("redrawOverlay: Forzando redibujado...");
              // Reutilizamos la lógica interna, adaptándola ligeramente
@@ -521,30 +548,41 @@ class ImageAdjuster {
                          newCtx.clearRect(0, 0, overlay.width, overlay.height);
                          newCtx.drawImage(newCroppedCanvas, 0, 0, overlay.width, overlay.height);
                          let newImageData = newCtx.getImageData(0, 0, overlay.width, overlay.height);
-                         let newModifiedImageData = this.applyAdjustmentsToImageData(newImageData, this.settings);
+                         
+                         // Apply adjustments and possibly noise
+                         let newModifiedImageData = this.applyAdjustmentsToImageData(newImageData, this.settings, noiseIntensity);
                          newCtx.putImageData(newModifiedImageData, 0, 0);
+                         
+                         // Make sure overlay is visible 
                          overlay.style.display = 'block';
-                         if (this.debug) console.log("redrawOverlay: Redibujado completado.");
+                         
+                         if (this.debug || noiseIntensity > 0) {
+                             console.log(`redrawOverlay: Completado con ruido=${noiseIntensity}`);
+                         }
                      } else {
-                         if (this.debug) console.error("redrawOverlay: No se pudo obtener newCroppedCanvas.");
+                         console.error("redrawOverlay: No se pudo obtener newCroppedCanvas.");
                          overlay.style.display = 'none';
                      }
                  } else {
-                     if (this.debug) console.error("redrawOverlay: No se encontró viewBox.");
+                     console.error("redrawOverlay: No se encontró viewBox.");
                      overlay.style.display = 'none';
                  }
              } catch (error) {
                  console.error("Error en redrawOverlay:", error);
                  if (overlay) overlay.style.display = 'none';
              }
-         } else {
-             if (this.debug) console.log("redrawOverlay: No se encontró overlay para redibujar.");
-             // Si no hay overlay, quizás deberíamos llamar a apply()?
-             // O simplemente no hacer nada si no hay ajustes que mostrar.
-             if (!this.isNeutral()) {
-                 // Podríamos intentar crear el overlay si no existe
-                 // this.apply(cropper); // Esto podría causar un bucle si apply llama a redrawOverlay
+         } else if (anyAdjustments) {
+             console.log("redrawOverlay: No se encontró overlay pero hay ajustes activos. Necesita crearse.");
+             // Si no hay overlay pero hay ajustes activos (incluido solo ruido),
+             // debemos asegurarnos de que se cree correctamente
+             if (cropper && cropper.ready) {
+                 // Use apply with a small delay to prevent potential recursion
+                 setTimeout(() => {
+                     this.apply(cropper);
+                 }, 10);
              }
+         } else {
+             if (this.debug) console.log("redrawOverlay: No se encontró overlay y no hay ajustes activos.");
         }
     }
 
@@ -552,10 +590,11 @@ class ImageAdjuster {
      * Aplica todos los ajustes configurados directamente a un objeto ImageData.
      * @param {ImageData} imageData - El objeto ImageData a modificar.
      * @param {Object} settings - Los ajustes a aplicar (this.settings).
+     * @param {number} [noiseIntensity=0] - Intensidad del ruido a aplicar (0-100).
      * @returns {ImageData} El objeto ImageData modificado.
      */
-    applyAdjustmentsToImageData(imageData, settings) {
-        if (this.debug) console.log("applyAdjustmentsToImageData: Iniciando con settings:", settings);
+    applyAdjustmentsToImageData(imageData, settings, noiseIntensity = 0) {
+        if (this.debug) console.log("applyAdjustmentsToImageData: Iniciando con settings:", settings, "Noise:", noiseIntensity);
         const data = imageData.data;
         const width = imageData.width;
         const height = imageData.height;
@@ -594,7 +633,7 @@ class ImageAdjuster {
 
                 // 3. Saturación y Vibrance (trabajan en HSL)
                 if (saturationFactor !== 0 || vibranceFactor !== 0) {
-                    let [h, s, l] = this.rgbToHsl(r / 255, g / 255, b / 255); // Convert to HSL [0, 1] range
+                    let [h, s, l] = this.rgbToHsl(r, g, b); // Use class method for HSL conversion
 
                     // Apply Saturation
                     if (saturationFactor !== 0) {
@@ -613,11 +652,11 @@ class ImageAdjuster {
                         s = Math.max(0, Math.min(1, s));
                     }
 
-                    // Convert back to RGB [0, 1] range
-                    let [newR, newG, newB] = this.hslToRgb(h, s, l);
-                    r = newR * 255;
-                    g = newG * 255;
-                    b = newB * 255;
+                    // Convert back to RGB [0, 255] range
+                    let [newR, newG, newB] = this.hslToRgb(h, s, l); // Use class method for RGB conversion
+                    r = newR;
+                    g = newG;
+                    b = newB;
                 }
 
                 // 4. LUT Presets (aplicar después de otros ajustes)
@@ -666,6 +705,13 @@ class ImageAdjuster {
                 data[i + 2] = Math.max(0, Math.min(255, Math.round(b)));
                 // data[i + 3] remains unchanged (alpha)
             }
+            
+            // 5. Apply Noise (after all other adjustments)
+            if (noiseIntensity > 0) {
+                if (this.debug) console.log(`applyAdjustmentsToImageData: Applying noise with intensity ${noiseIntensity}`);
+                this.applyNoise(data, width, height, noiseIntensity);
+            }
+            
              if (this.debug) console.log("applyAdjustmentsToImageData: Procesamiento de píxeles completado.");
              return imageData; // Return modified ImageData
         } catch (error) {
@@ -676,6 +722,8 @@ class ImageAdjuster {
     
     // Métodos de conversión de color que podrían ser necesarios
     rgbToHsl(r, g, b) {
+        // Converts RGB [0, 255] to HSL [0, 1]
+        r /= 255, g /= 255, b /= 255;
         const max = Math.max(r, g, b);
         const min = Math.min(r, g, b);
         let h, s, l = (max + min) / 2;
@@ -699,6 +747,7 @@ class ImageAdjuster {
     }
     
     hslToRgb(h, s, l) {
+        // Converts HSL [0, 1] to RGB [0, 255]
         let r, g, b;
         
         if (s === 0) {
@@ -721,7 +770,40 @@ class ImageAdjuster {
             b = hue2rgb(p, q, h - 1/3);
         }
         
-        return [r, g, b];
+        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+    
+    /**
+     * Aplica ruido aleatorio a los datos de imagen
+     * @param {Uint8ClampedArray} imageDataData - Array de datos de imagen (solo el .data)
+     * @param {number} width - Ancho de la imagen
+     * @param {number} height - Alto de la imagen
+     * @param {number} intensity - Intensidad del ruido (0-100)
+     */
+    applyNoise(imageDataData, width, height, intensity) {
+        const noiseLevel = Math.min(100, Math.max(0, intensity)) / 100;
+        const maxLightnessNoise = noiseLevel * 0.5;
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const index = (y * width + x) * 4;
+
+                let r = imageDataData[index];
+                let g = imageDataData[index + 1];
+                let b = imageDataData[index + 2];
+
+                // Convert to HSL, add noise to lightness, convert back
+                let [h, s, l] = this.rgbToHsl(r, g, b); // Use class method
+                const lightnessNoise = (Math.random() * 2 - 1) * maxLightnessNoise;
+                let noisyL = Math.max(0, Math.min(1, l + lightnessNoise));
+                let [newR, newG, newB] = this.hslToRgb(h, s, noisyL); // Use class method
+
+                imageDataData[index] = newR;
+                imageDataData[index + 1] = newG;
+                imageDataData[index + 2] = newB;
+                // Alpha (imageDataData[index + 3]) remains unchanged
+            }
+        }
     }
 }
 
@@ -742,6 +824,7 @@ export function initImageAdjustments(cropper) {
     const lutPresetSelect = document.getElementById('lutPreset');
     const resetButton = document.getElementById('resetAdjustments');
     const processingIndicator = document.getElementById('processingAdjustments');
+    const noiseLevelSelect = document.getElementById('noiseLevelSelect'); // Get noise select
     
     console.log("Inicializando ajustes de imagen", {
         brightnessSlider,
@@ -750,7 +833,8 @@ export function initImageAdjustments(cropper) {
         vibranceSlider,
         lutPresetSelect,
         resetButton,
-        processingIndicator
+        processingIndicator,
+        noiseLevelSelect // Log noise select
     });
     
     // Mostrar información sobre el cropper para diagnóstico
@@ -765,8 +849,12 @@ export function initImageAdjustments(cropper) {
         // Add event listener to refresh LUTs when crop area changes (including aspect ratio)
         if (cropper.element) {
             cropper.element.addEventListener('crop', function onCropEvent() {
-                // Skip if no cropper or image adjuster is neutral
-                if (!imageAdjuster || imageAdjuster.isNeutral()) {
+                // Get noise level from DOM
+                const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+                const noiseIntensity = noiseLevelSelect ? parseInt(noiseLevelSelect.value, 10) : 0;
+                
+                // Skip if no cropper or image adjuster is neutral AND there's no noise
+                if ((!imageAdjuster || imageAdjuster.isNeutral()) && noiseIntensity === 0) {
                     return;
                 }
                 
@@ -776,7 +864,7 @@ export function initImageAdjustments(cropper) {
                 }
                 
                 window.cropDebounceTimeout = setTimeout(() => {
-                    console.log('Crop area changed - redrawing LUT overlay');
+                    console.log('Crop area changed - redrawing LUT/noise overlay');
                     // Show processing indicator
                     if (processingIndicator) {
                         processingIndicator.classList.add('show');
@@ -789,9 +877,9 @@ export function initImageAdjustments(cropper) {
                             processingIndicator.classList.remove('show');
                         }
                     });
-                }, 250); // Quarter second debounce
+                }, 150); // Reduced debounce time for better responsiveness
             });
-            console.log("Added global crop event listener for LUT reapplication");
+            console.log("Added global crop event listener for LUT/noise reapplication");
         }
     } else {
         console.error("ERROR: No se proporcionó un objeto cropper válido");
@@ -816,6 +904,8 @@ export function initImageAdjustments(cropper) {
                 saturation: parseInt(saturationSlider.value),
                 vibrance: parseInt(vibranceSlider.value),
                 lutPreset: lutPresetSelect.value
+                // Noise level is handled directly during adjustment application,
+                // no need to store it in imageAdjuster.settings
             };
             
             console.log("Actualizando desde UI:", newSettings);
@@ -863,6 +953,14 @@ export function initImageAdjustments(cropper) {
         });
     }
     
+    // Add event listener for noise level change
+    if (noiseLevelSelect) {
+        noiseLevelSelect.addEventListener('change', event => {
+            console.log(`Noise level seleccionado: ${event.target.value}`);
+            updateFromUI(); // Trigger the same update function
+        });
+    }
+    
     // Resetear ajustes
     if (resetButton) {
         resetButton.addEventListener('click', () => {
@@ -875,6 +973,7 @@ export function initImageAdjustments(cropper) {
             if (saturationSlider) saturationSlider.value = settings.saturation;
             if (vibranceSlider) vibranceSlider.value = settings.vibrance;
             if (lutPresetSelect) lutPresetSelect.value = settings.lutPreset;
+            if (noiseLevelSelect) noiseLevelSelect.value = '0'; // Reset noise dropdown
             
             // Show processing indicator
             if (processingIndicator) {
@@ -882,7 +981,7 @@ export function initImageAdjustments(cropper) {
             }
             
             // Limpiar estado (overlay, listeners, filtros CSS)
-            // Llamar a apply() se encargará de esto ahora
+            // Llamar a apply() se encargará de esto ahora (will apply with noise=0)
             imageAdjuster.apply(cropper, (success) => {
                 // Hide processing indicator when complete
                 if (processingIndicator) {
