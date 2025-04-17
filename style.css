@@ -491,3 +491,20 @@ input[type="range"]:hover::-moz-range-thumb {
   border-color: #10b981;
 }
 
+/* Processing indicator animation */
+#processingAdjustments {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+#processingAdjustments.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Ensure processing indicator is on top of other popups */
+#processingAdjustments {
+  z-index: 60 !important;
+}
+

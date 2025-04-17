@@ -256,7 +256,7 @@ async function handleImageLoad(file) {
             cropBoxMovable: true,
             cropBoxResizable: true,
             toggleDragModeOnDblclick: true,
-            ready: function () {
+            ready: function () { // Usar el evento ready oficial de Cropper.js
                 // Habilitar el botón de recorte ahora que el cropper está listo
                 cropButton.disabled = false;
 
@@ -303,14 +303,7 @@ async function handleImageLoad(file) {
                         window.gridGuides.setGuideCanvas(guideCanvas);
                     }
                 }
-                
-                // Redraw any image adjustments after the cropper is ready
-                if (window.imageAdjuster) {
-                    setTimeout(() => {
-                        window.imageAdjuster.redrawOverlay(cropper);
-                    }, 200);
-                }
-            }
+            } // Fin del 'ready' callback
         });
 
     } catch (error) {
@@ -871,33 +864,62 @@ function applyNoiseToSubRectangle(sourceData, sourceTotalWidth, sx, sy, width, h
 
 // Common function for all aspect ratio button handlers
 function handleAspectRatioChange(ratio) {
-    // 1. Store the current adjustment settings
+    const processingIndicator = document.getElementById('processingAdjustments');
+    
+    // 1. Show processing indicator immediately
+    if (processingIndicator) {
+        processingIndicator.classList.add('show');
+    }
+    
+    // 2. Check if adjustments are active BEFORE removing overlay/changing ratio
     const hasAdjustments = window.imageAdjuster && !window.imageAdjuster.isNeutral();
     
-    // 2. Force cleanup of everything
+    // 3. Remove any existing overlay
     if (window.imageAdjuster) {
-        console.log(`Removing overlays before setting aspect ratio to ${ratio}`);
         window.imageAdjuster.removeOverlay();
     }
     
-    // 3. Apply the new aspect ratio
-    cropper.setAspectRatio(ratio);
-    
-    // 4. Clear any previous timeouts
-    if (window.aspectRatioTimeout) {
-        clearTimeout(window.aspectRatioTimeout);
-    }
-    
-    // 5. Set a timeout to reapply adjustments after the aspect ratio change
-    window.aspectRatioTimeout = setTimeout(() => {
-        if (hasAdjustments && window.imageAdjuster) {
-            console.log(`Reapplying adjustments after aspect ratio change to ${ratio}`);
-            // Force remove any old overlays that might have appeared
-            window.imageAdjuster.removeOverlay();
-            // Apply the adjustments from scratch
-            window.imageAdjuster.apply(cropper);
+    // 4. Apply aspect ratio change
+    // We wrap this in a minimal timeout to allow the UI to update (show indicator, remove overlay)
+    // before the potentially blocking cropper operation.
+    setTimeout(() => {
+        try {
+            if (cropper) {
+                cropper.setAspectRatio(ratio);
+                
+                // 5. Re-apply adjustments ONLY if they were active
+                if (hasAdjustments && window.imageAdjuster) {
+                    // The apply function now handles hiding the indicator via its callback
+                    console.log(`Reapplying adjustments after aspect ratio change to ${ratio}`);
+                    window.imageAdjuster.apply(cropper, (success) => {
+                        // Callback in apply hides the indicator
+                        if (!success) {
+                            // If apply fails, ensure indicator is hidden
+                            if (processingIndicator) {
+                                processingIndicator.classList.remove('show');
+                            }
+                        }
+                    });
+                } else {
+                    // If no adjustments needed re-applying, hide indicator now
+                    if (processingIndicator) {
+                        processingIndicator.classList.remove('show');
+                    }
+                }
+            } else {
+                 // If no cropper, hide indicator
+                 if (processingIndicator) {
+                      processingIndicator.classList.remove('show');
+                 }
+            }
+        } catch (error) {
+            console.error("Error setting aspect ratio or reapplying adjustments:", error);
+            // Ensure indicator is hidden on error
+            if (processingIndicator) {
+                processingIndicator.classList.remove('show');
+            }
         }
-    }, 200); // Longer timeout for more reliability
+    }, 10); // Minimal timeout (10ms) for UI update before cropper action
 }
 
 // Set up all aspect ratio button click handlers

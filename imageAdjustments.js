@@ -53,35 +53,46 @@ class ImageAdjuster {
         if (this.debug) console.log("removeOverlay: Starting thorough cleanup");
         
         try {
-            // 1. Find and clear any overlays in the entire document to be super thorough
+            // 1. Primero OCULTAR visualmente cualquier overlay antes de eliminar
+            // Esto produce una transición visual más suave
             const allOverlaysInDocument = document.querySelectorAll('.image-adjuster-overlay');
             if (allOverlaysInDocument.length > 0) {
+                // Ocultar primero (inmediato visualmente)
+                allOverlaysInDocument.forEach(overlay => {
+                    overlay.style.display = 'none';
+                    overlay.style.opacity = '0';
+                });
+                
+                if (this.debug) console.log(`removeOverlay: Ocultados ${allOverlaysInDocument.length} overlays`);
+                
+                // Luego eliminar después de ocultar
                 allOverlaysInDocument.forEach(overlay => {
                     overlay.remove();
                 });
-                if (this.debug) console.log(`removeOverlay: Removed ${allOverlaysInDocument.length} overlays from entire document`);
+                
+                if (this.debug) console.log(`removeOverlay: Eliminados ${allOverlaysInDocument.length} overlays`);
             } else {
-                if (this.debug) console.log(`removeOverlay: No overlays found in document`);
+                if (this.debug) console.log(`removeOverlay: No se encontraron overlays en el documento`);
             }
             
-            // 2. Clear all CSS filters from the view box
+            // 2. Limpiar filtros CSS del view box
             const viewBox = document.querySelector('.cropper-view-box');
             if (viewBox) {
                 viewBox.style.filter = 'none';
-                if (this.debug) console.log("removeOverlay: CSS filters removed from view-box");
+                if (this.debug) console.log("removeOverlay: Filtros CSS eliminados del view-box");
             }
             
-            // 3. Also detach any listeners to prevent any unexpected canvas creations
+            // 3. Desconectar listeners para evitar creaciones inesperadas de canvas
             const cropperImage = document.querySelector('.cropper-container img');
             if (cropperImage) {
-                if (this.debug) console.log("removeOverlay: Detaching crop listeners");
+                if (this.debug) console.log("removeOverlay: Desconectando crop listeners");
                 this.detachCropListeners({ element: cropperImage });
             }
         } catch (error) {
-            console.error("Error in removeOverlay method:", error);
+            console.error("Error en método removeOverlay:", error);
         }
         
-        if (this.debug) console.log("removeOverlay: Cleanup complete");
+        if (this.debug) console.log("removeOverlay: Limpieza completa");
     }
     
     /**
@@ -113,57 +124,71 @@ class ImageAdjuster {
     /**
      * Aplica los ajustes a la imagen en el cropper
      * @param {Cropper} cropper - Instancia del cropper
+     * @param {Function} callback - Función opcional a llamar cuando se complete el proceso
      */
-    apply(cropper) {
+    apply(cropper, callback = null) {
         if (!cropper || !cropper.ready) {
             if (this.debug) console.log("Cropper no está listo");
+            if (callback) callback(false);
             return;
         }
         
         try {
-            // First clear any existing overlays or filters
+            // Primero limpiar completamente cualquier overlay o filtro existente
             this.removeOverlay();
             
-            // Encontrar elementos relevantes
-            const cropperContainer = document.querySelector('.cropper-container');
-            const cropperViewBox = document.querySelector('.cropper-view-box');
-            const originalImage = cropper.image;
-            
-            if (this.debug) {
-                console.log("Ejecutando apply() con settings:", this.settings);
-            }
-
-            if (!cropperViewBox || !originalImage) {
-                if (this.debug) console.log("No se encontraron elementos esenciales del cropper en apply()");
-                return;
-            }
-            
-            // Si todos los valores son neutros, terminamos aquí (ya limpiamos)
-            if (this.isNeutral()) {
-                if (this.debug) console.log("apply(): Todos los valores son neutros, estado limpio.");
-                return;
-            }
-            
-            // ENFOQUE 1: Para efectos básicos usamos filtros CSS
-            if (this.canUseSimpleCSSFilters()) {
-                const filters = this.generateCSSFilters();
-                if (this.debug) console.log("apply(): Aplicando filtros CSS simples:", filters);
-                cropperViewBox.style.filter = filters;
-                // No necesitamos overlay ni listeners para CSS
-                return;
-            }
-
-            // ENFOQUE 2: Para efectos avanzados (LUTs, vibrance) usamos overlay
-            if (this.debug) console.log("apply(): Aplicando efectos avanzados mediante overlay");
-            // Pasar el container es importante
-            if (cropperContainer) {
-                this.applyOverlayEffects(cropper, cropperViewBox, cropperContainer);
-            } else {
-                if (this.debug) console.error("apply(): No se encontró cropper-container para aplicar overlay");
-            }
-            
+            // Esperar un instante para que la limpieza sea visible antes de aplicar nuevos ajustes
+            setTimeout(() => {
+                try {
+                    // Encontrar elementos relevantes
+                    const cropperContainer = document.querySelector('.cropper-container');
+                    const cropperViewBox = document.querySelector('.cropper-view-box');
+                    const originalImage = cropper.image;
+                    
+                    if (this.debug) {
+                        console.log("Ejecutando apply() con settings:", this.settings);
+                    }
+                    
+                    if (!cropperViewBox || !originalImage) {
+                        if (this.debug) console.log("No se encontraron elementos esenciales del cropper en apply()");
+                        if (callback) callback(false);
+                        return;
+                    }
+                    
+                    // Si todos los valores son neutros, terminamos aquí (ya limpiamos)
+                    if (this.isNeutral()) {
+                        if (this.debug) console.log("apply(): Todos los valores son neutros, estado limpio.");
+                        if (callback) callback(true);
+                        return;
+                    }
+                    
+                    // ENFOQUE 1: Para efectos básicos usamos filtros CSS
+                    if (this.canUseSimpleCSSFilters()) {
+                        const filters = this.generateCSSFilters();
+                        if (this.debug) console.log("apply(): Aplicando filtros CSS simples:", filters);
+                        cropperViewBox.style.filter = filters;
+                        // No necesitamos overlay ni listeners para CSS
+                        if (callback) callback(true);
+                        return;
+                    }
+                    
+                    // ENFOQUE 2: Para efectos avanzados (LUTs, vibrance) usamos overlay
+                    if (this.debug) console.log("apply(): Aplicando efectos avanzados mediante overlay");
+                    // Pasar el container es importante
+                    if (cropperContainer) {
+                        this.applyOverlayEffects(cropper, cropperViewBox, cropperContainer, callback);
+                    } else {
+                        if (this.debug) console.error("apply(): No se encontró cropper-container para aplicar overlay");
+                        if (callback) callback(false);
+                    }
+                } catch (error) {
+                    console.error('Error en apply() (fase secundaria):', error);
+                    if (callback) callback(false);
+                }
+            }, 0); // Timeout mínimo para permitir que la UI se actualice
         } catch (error) {
-            console.error('Error en apply():', error);
+            console.error('Error en apply() (fase inicial):', error);
+            if (callback) callback(false);
         }
     }
     
@@ -184,15 +209,9 @@ class ImageAdjuster {
      * @returns {boolean} true si podemos usar solo CSS filters
      */
     canUseSimpleCSSFilters() {
-        // Si solo tenemos brillo, contraste, saturación (y quizás b&w o sepia simples)
-        const { brightness, contrast, saturation, vibrance, lutPreset } = this.settings;
-        
-        // Si vibrance != 0 o LUT es uno personalizado, necesitamos canvas
-        if (vibrance !== 0) return false;
-        // Only allow simple LUTs for CSS preview
-        if (lutPreset !== 'none' && !['bw', 'sepia'].includes(lutPreset)) return false;
-        
-        return true;
+        // Always return false to force canvas-based adjustments for all operations
+        // This gives a real preview of how the final image will look
+        return false;
     }
     
     /**
@@ -307,8 +326,9 @@ class ImageAdjuster {
      * @param {Cropper} cropper - Instancia del cropper
      * @param {HTMLElement} viewBox - El elemento .cropper-view-box
      * @param {HTMLElement} container - El elemento .cropper-container (Necesario para encontrar crop-box)
+     * @param {Function} callback - Función opcional a llamar cuando se complete el proceso
      */
-    applyOverlayEffects(cropper, viewBox, container) {
+    applyOverlayEffects(cropper, viewBox, container, callback) {
         if (!cropper || !viewBox || !container) return;
 
         const cropBox = container.querySelector('.cropper-crop-box');
@@ -320,20 +340,25 @@ class ImageAdjuster {
         try {
             if (this.debug) console.log("applyOverlayEffects: Iniciando creación de overlay dentro de crop-box");
         
-            // First, ensure we remove any existing overlays to avoid duplicates
-            this.removeOverlay();
-            
             // --- Crear o encontrar y posicionar overlay --- 
-            let overlayCanvas = document.createElement('canvas');
-            overlayCanvas.className = 'image-adjuster-overlay';
-            overlayCanvas.style.position = 'absolute';
-            overlayCanvas.style.top = '0px'; 
-            overlayCanvas.style.left = '0px';
-            overlayCanvas.style.zIndex = '2'; 
-            overlayCanvas.style.pointerEvents = 'none';
-            overlayCanvas.style.imageRendering = 'pixelated'; 
-            cropBox.appendChild(overlayCanvas);
-            if (this.debug) console.log("applyOverlayEffects: Overlay CREADO y añadido a crop-box");
+            let overlayCanvas = cropBox.querySelector('.image-adjuster-overlay');
+            if (!overlayCanvas) {
+                overlayCanvas = document.createElement('canvas');
+                overlayCanvas.className = 'image-adjuster-overlay';
+                overlayCanvas.style.position = 'absolute';
+                overlayCanvas.style.top = '0px'; 
+                overlayCanvas.style.left = '0px';
+                overlayCanvas.style.zIndex = '2'; 
+                overlayCanvas.style.pointerEvents = 'none';
+                overlayCanvas.style.imageRendering = 'pixelated'; 
+                cropBox.appendChild(overlayCanvas);
+                if (this.debug) console.log("applyOverlayEffects: Overlay CREADO y añadido a crop-box");
+            } else {
+                if (this.debug) console.log("applyOverlayEffects: Overlay existente encontrado.");
+            }
+        
+            // Actualizar tamaño y dibujar (esta lógica ahora está en redrawAndUpdateOverlay)
+            // Pero necesitamos una llamada inicial para mostrarlo si no es una interacción
             
             // --- Listener Management --- 
             this.detachCropListeners(cropper); 
@@ -359,6 +384,7 @@ class ImageAdjuster {
                 const currentOverlay = cropBox.querySelector('.image-adjuster-overlay');
                 if (!currentOverlay) {
                     if (self.debug) console.error("redrawAndUpdateOverlay: Overlay no encontrado!");
+                    if (callback) callback(false);
                  return;
             }
 
@@ -369,6 +395,7 @@ class ImageAdjuster {
                         if (updatedViewBoxRect.width <= 0 || updatedViewBoxRect.height <= 0) {
                              if (self.debug) console.warn("redrawAndUpdateOverlay: ViewBox con dimensiones 0, omitiendo redibujo.");
                              currentOverlay.style.display = 'none';
+                             if (callback) callback(false);
                  return;
             }
 
@@ -394,17 +421,21 @@ class ImageAdjuster {
 
                             currentOverlay.style.display = 'block'; 
                             if (self.debug) console.log("redrawAndUpdateOverlay: Overlay actualizado y mostrado");
+                            if (callback) callback(true); // Notify that processing is complete
                         } else {
                              if (self.debug) console.error("redrawAndUpdateOverlay: No se pudo obtener newCroppedCanvas");
                              currentOverlay.style.display = 'none'; 
+                             if (callback) callback(false);
                         }
                     } else {
                         if (self.debug) console.error("redrawAndUpdateOverlay: No se encontró viewBox");
                         if(currentOverlay) currentOverlay.style.display = 'none';
+                        if (callback) callback(false);
                     }
                 } catch(error) {
                      console.error("Error dentro de redrawAndUpdateOverlay:", error);
                      if(currentOverlay) currentOverlay.style.display = 'none';
+                     if (callback) callback(false);
                 }
             };
             // --- FIN FUNCIONES INTERNAS --- 
@@ -462,18 +493,6 @@ class ImageAdjuster {
             if (this.debug) console.log("redrawOverlay: Cropper no listo.");
             return;
         }
-        
-        // Check if we can use simple CSS filters instead of canvas overlay
-        if (this.canUseSimpleCSSFilters() && !this.isNeutral()) {
-            const viewBox = document.querySelector('.cropper-view-box');
-            if (viewBox) {
-                const filters = this.generateCSSFilters();
-                if (this.debug) console.log("redrawOverlay: Aplicando filtros CSS simples:", filters);
-                viewBox.style.filter = filters;
-                return;
-            }
-        }
-        
         const container = document.querySelector('.cropper-container');
         const cropBox = container?.querySelector('.cropper-crop-box');
         const overlay = cropBox?.querySelector('.image-adjuster-overlay');
@@ -520,10 +539,11 @@ class ImageAdjuster {
              }
          } else {
              if (this.debug) console.log("redrawOverlay: No se encontró overlay para redibujar.");
-             // Si no hay overlay pero hay ajustes activos, llamar a apply() para crear uno nuevo
+             // Si no hay overlay, quizás deberíamos llamar a apply()?
+             // O simplemente no hacer nada si no hay ajustes que mostrar.
              if (!this.isNeutral()) {
-                 this.apply(cropper);
-                 if (this.debug) console.log("redrawOverlay: Llamando a apply() para crear nuevo overlay");
+                 // Podríamos intentar crear el overlay si no existe
+                 // this.apply(cropper); // Esto podría causar un bucle si apply llama a redrawOverlay
              }
         }
     }
@@ -721,6 +741,7 @@ export function initImageAdjustments(cropper) {
     const vibranceSlider = document.getElementById('vibrance');
     const lutPresetSelect = document.getElementById('lutPreset');
     const resetButton = document.getElementById('resetAdjustments');
+    const processingIndicator = document.getElementById('processingAdjustments');
     
     console.log("Inicializando ajustes de imagen", {
         brightnessSlider,
@@ -728,7 +749,8 @@ export function initImageAdjustments(cropper) {
         saturationSlider,
         vibranceSlider,
         lutPresetSelect,
-        resetButton
+        resetButton,
+        processingIndicator
     });
     
     // Mostrar información sobre el cropper para diagnóstico
@@ -755,9 +777,18 @@ export function initImageAdjustments(cropper) {
                 
                 window.cropDebounceTimeout = setTimeout(() => {
                     console.log('Crop area changed - redrawing LUT overlay');
+                    // Show processing indicator
+                    if (processingIndicator) {
+                        processingIndicator.classList.add('show');
+                    }
                     // Completely remove and reapply overlay
                     imageAdjuster.removeOverlay();
-                    imageAdjuster.apply(cropper);
+                    imageAdjuster.apply(cropper, (success) => {
+                        // Hide processing indicator when complete
+                        if (processingIndicator) {
+                            processingIndicator.classList.remove('show');
+                        }
+                    });
                 }, 250); // Quarter second debounce
             });
             console.log("Added global crop event listener for LUT reapplication");
@@ -788,10 +819,24 @@ export function initImageAdjustments(cropper) {
             };
             
             console.log("Actualizando desde UI:", newSettings);
+            
+            // Show processing indicator
+            if (processingIndicator) {
+                processingIndicator.classList.add('show');
+            }
+            
             imageAdjuster.updateSettings(newSettings);
-            imageAdjuster.apply(cropper);
+            imageAdjuster.apply(cropper, (success) => {
+                // Hide processing indicator when complete
+                if (processingIndicator) {
+                    setTimeout(() => {
+                        processingIndicator.classList.remove('show');
+                    }, 300); // Add a small delay so user can see it was processed
+                }
+            });
+            
             timeout = null;
-        }, 50); // Pequeño throttle para evitar demasiadas actualizaciones
+        }, 200); // Increased throttle to reduce frequency of heavy operations
     };
     
     // Añadir event listeners
@@ -831,9 +876,21 @@ export function initImageAdjustments(cropper) {
             if (vibranceSlider) vibranceSlider.value = settings.vibrance;
             if (lutPresetSelect) lutPresetSelect.value = settings.lutPreset;
             
+            // Show processing indicator
+            if (processingIndicator) {
+                processingIndicator.classList.add('show');
+            }
+            
             // Limpiar estado (overlay, listeners, filtros CSS)
             // Llamar a apply() se encargará de esto ahora
-            imageAdjuster.apply(cropper);
+            imageAdjuster.apply(cropper, (success) => {
+                // Hide processing indicator when complete
+                if (processingIndicator) {
+                    setTimeout(() => {
+                        processingIndicator.classList.remove('show');
+                    }, 300); // Short delay for visual feedback
+                }
+            });
             console.log("Ajustes reseteados y apply() llamado");
         });
     }
