@@ -169,6 +169,7 @@ body.dark-mode select option {
   opacity: 0.75;
   width: 12px!important;
   border-radius: 50% !important;
+  z-index: 3;
 }
 
 .cropper-line {

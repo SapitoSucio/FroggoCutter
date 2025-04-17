@@ -11,6 +11,9 @@ class ImageAdjuster {
             lutPreset: 'none'
         };
         
+        this._cropStartListener = null;
+        this._cropEndListener = null;
+        
         // Debug mode (siempre activo para diagnosticar problemas)
         this.debug = true;
     }
@@ -28,8 +31,8 @@ class ImageAdjuster {
     }
     
     /**
-     * Resetea todos los ajustes a sus valores por defecto
-     * @returns {Object} - Los ajustes reseteados
+     * Restablece los ajustes a los valores por defecto
+     * @returns {Object} Los ajustes por defecto
      */
     resetSettings() {
         this.settings = {
@@ -39,12 +42,31 @@ class ImageAdjuster {
             vibrance: 0,
             lutPreset: 'none'
         };
-        
-        if (this.debug) {
-            console.log("Ajustes reseteados a valores por defecto:", this.settings);
-        }
-        
         return this.settings;
+    }
+    
+    removeOverlay() {
+        const cropperContainer = document.querySelector('.cropper-container');
+        if (!cropperContainer) return;
+        const existingOverlay = cropperContainer.querySelector('.image-adjuster-overlay');
+        if (existingOverlay) {
+            existingOverlay.remove();
+            if (this.debug) console.log("Overlay removido");
+        }
+    }
+    
+    detachCropListeners(cropper) {
+        if (!cropper || !cropper.element) return;
+        if (this._cropStartListener) {
+            cropper.element.removeEventListener('cropstart', this._cropStartListener);
+            this._cropStartListener = null;
+            if (this.debug) console.log("Listener de cropstart eliminado");
+        }
+        if (this._cropEndListener) {
+            cropper.element.removeEventListener('cropend', this._cropEndListener);
+            this._cropEndListener = null;
+            if (this.debug) console.log("Listener de cropend eliminado");
+        }
     }
     
     /**
@@ -56,59 +78,53 @@ class ImageAdjuster {
             if (this.debug) console.log("Cropper no está listo");
             return;
         }
-        
+
         try {
-            // ¡DIAGNÓSTICO! Intenta encontrar todos los elementos relevantes
+            // Encontrar elementos relevantes
             const cropperContainer = document.querySelector('.cropper-container');
-            const cropperCanvas = document.querySelector('.cropper-canvas');
             const cropperViewBox = document.querySelector('.cropper-view-box');
-            const cropperDragBox = document.querySelector('.cropper-drag-box');
-            
+            const originalImage = cropper.image;
+
             if (this.debug) {
-                console.log("Elementos del Cropper:", {
-                    container: cropperContainer, 
-                    canvas: cropperCanvas,
-                    viewBox: cropperViewBox,
-                    dragBox: cropperDragBox
-                });
-            }
-            
-            if (!cropperViewBox) {
-                if (this.debug) console.log("No se encontró el cropper-view-box");
-                return;
-            }
-            
-            // Primero, limpiamos cualquier filtro anterior y el background personalizado
-            if (this.debug) console.log("Limpiando filtros anteriores");
-            cropperViewBox.style.filter = 'none';
-            cropperViewBox.style.backgroundImage = '';
-            // Make sure original image is visible again if it was hidden by previous canvas preview
-            const imgElement = cropperViewBox.querySelector('img');
-            if (imgElement) {
-                 imgElement.style.opacity = '1';
+                console.log("Ejecutando apply() con settings:", this.settings);
             }
 
-            // Si todos los valores son neutros, simplemente limpiamos y salimos
-            if (this.isNeutral()) {
-                if (this.debug) console.log("Todos los valores son neutros, no se aplican cambios");
+            if (!cropperViewBox || !originalImage) {
+                if (this.debug) console.log("No se encontraron elementos esenciales del cropper en apply()");
                 return;
             }
-            
-            // Para efectos básicos (brillo, contraste, saturación, b/w, sepia) usamos filtros CSS para preview
+
+            // Siempre limpiar estado anterior (filtros CSS, overlay, listeners)
+            cropperViewBox.style.filter = 'none';
+            this.removeOverlay();
+            this.detachCropListeners(cropper); // Detach listeners before deciding next step
+
+            // Si todos los valores son neutros, terminamos aquí (ya limpiamos)
+            if (this.isNeutral()) {
+                if (this.debug) console.log("apply(): Todos los valores son neutros, estado limpio.");
+                return;
+            }
+
+            // ENFOQUE 1: Para efectos básicos usamos filtros CSS
             if (this.canUseSimpleCSSFilters()) {
                 const filters = this.generateCSSFilters();
-                if (this.debug) console.log("Aplicando filtros CSS simples para preview:", filters);
+                if (this.debug) console.log("apply(): Aplicando filtros CSS simples:", filters);
                 cropperViewBox.style.filter = filters;
-                return; // CSS filters are sufficient for preview
+                // No necesitamos overlay ni listeners para CSS
+                return;
             }
-            
-            // Para LUTs avanzados y vibrance necesitamos un enfoque de canvas para PREVIEW
-            if (this.debug) console.log("Aplicando efectos avanzados mediante canvas para PREVIEW");
-            // Use a separate function for canvas-based preview application
-            this.applyPreviewCanvasEffects(cropper, cropperViewBox);
-            
+
+            // ENFOQUE 2: Para efectos avanzados (LUTs, vibrance) usamos overlay
+            if (this.debug) console.log("apply(): Aplicando efectos avanzados mediante overlay");
+            // Pasar el container es importante
+            if (cropperContainer) {
+                this.applyOverlayEffects(cropper, cropperViewBox, cropperContainer);
+            } else {
+                if (this.debug) console.error("apply(): No se encontró cropper-container para aplicar overlay");
+            }
+
         } catch (error) {
-            console.error('Error aplicando ajustes de PREVIEW:', error);
+            console.error('Error en apply():', error);
         }
     }
     
@@ -247,91 +263,144 @@ class ImageAdjuster {
     }
     
     /**
-     * Aplica efectos avanzados usando procesamiento de canvas PARA PREVIEW.
-     * Modifica el background del viewBox para mostrar el resultado.
+     * Aplica efectos avanzados usando un overlay transparente sobre el area visible
+     * y añade listeners para ocultarlo/mostrarlo durante la interacción.
      * @param {Cropper} cropper - Instancia del cropper
      * @param {HTMLElement} viewBox - El elemento .cropper-view-box
+     * @param {HTMLElement} container - El elemento .cropper-container (Necesario para encontrar crop-box)
      */
-    applyPreviewCanvasEffects(cropper, viewBox) {
-        if (!cropper || !viewBox) return;
+    applyOverlayEffects(cropper, viewBox, container) {
+        if (!cropper || !viewBox || !container) return;
+
+        // Encontrar el crop-box
+        const cropBox = container.querySelector('.cropper-crop-box');
+        if (!cropBox) {
+            if (this.debug) console.error("applyOverlayEffects: No se encontró .cropper-crop-box");
+            return;
+        }
 
         try {
-            if (this.debug) console.log("applyPreviewCanvasEffects: Iniciando");
+            if (this.debug) console.log("applyOverlayEffects: Iniciando creación de overlay dentro de crop-box");
 
-            // 1. Obtener el canvas recortado ACTUAL (representa la vista)
-            // Use viewMode dimensions if possible, or just get the current cropBox view
-            const cropBoxData = cropper.getCropBoxData();
-            const canvasData = cropper.getCanvasData();
+            // --- Crear y posicionar overlay --- 
+            const viewBoxRect = viewBox.getBoundingClientRect(); // Usamos las dimensiones del view-box
 
-            // Get a canvas representing what's currently visible in the crop box
-            // We might need to adjust options for better preview quality vs performance
-            const previewCanvas = cropper.getCroppedCanvas({
-                // Use dimensions that roughly match the display size for performance
-                // Let's try using the crop box display size directly
-                 width: cropBoxData.width,
-                 height: cropBoxData.height,
-                 // Maybe disable smoothing for speed? Or keep it for quality? Test needed.
-                 imageSmoothingEnabled: true,
-                 imageSmoothingQuality: 'low', // Preview doesn't need highest quality
+            // Eliminar overlay previo si existe DENTRO del cropBox (más específico)
+            const existingOverlay = cropBox.querySelector('.image-adjuster-overlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
+
+            const overlayCanvas = document.createElement('canvas');
+            overlayCanvas.width = viewBoxRect.width;
+            overlayCanvas.height = viewBoxRect.height;
+            overlayCanvas.className = 'image-adjuster-overlay';
+            overlayCanvas.style.position = 'absolute';
+            overlayCanvas.style.top = '0px'; // Posición relativa al crop-box
+            overlayCanvas.style.left = '0px'; // Posición relativa al crop-box
+            overlayCanvas.style.width = `${viewBoxRect.width}px`;
+            overlayCanvas.style.height = `${viewBoxRect.height}px`;
+            // z-index: 2 -> encima del view-box(1), debajo de face(3), line(4), point(5)
+            overlayCanvas.style.zIndex = '2'; 
+            overlayCanvas.style.pointerEvents = 'none';
+            overlayCanvas.style.imageRendering = 'pixelated'; 
+            
+            const ctx = overlayCanvas.getContext('2d', { willReadFrequently: true });
+
+            // --- Dibujar imagen con ajustes en el overlay --- 
+            const croppedCanvas = cropper.getCroppedCanvas({
+                width: viewBoxRect.width * window.devicePixelRatio, 
+                height: viewBoxRect.height * window.devicePixelRatio,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'medium' 
             });
 
-            if (!previewCanvas) {
-                if (this.debug) console.error("applyPreviewCanvasEffects: No se pudo obtener el canvas de preview.");
+            if (!croppedCanvas) {
+                if (this.debug) console.error("applyOverlayEffects: No se pudo obtener el canvas recortado");
                 return;
             }
-            if (this.debug) console.log(`applyPreviewCanvasEffects: Preview canvas obtenido (${previewCanvas.width}x${previewCanvas.height})`);
 
+            ctx.drawImage(croppedCanvas, 0, 0, overlayCanvas.width, overlayCanvas.height);
 
-            const previewCtx = previewCanvas.getContext('2d', { willReadFrequently: true });
-            if (!previewCtx) {
-                 if (this.debug) console.error("applyPreviewCanvasEffects: No se pudo obtener el contexto 2D del preview canvas.");
-                 return;
-            }
-
-            // 2. Obtener ImageData del canvas de preview
             let imageData;
             try {
-                imageData = previewCtx.getImageData(0, 0, previewCanvas.width, previewCanvas.height);
-                 if (this.debug) console.log("applyPreviewCanvasEffects: ImageData de preview obtenida.");
+                imageData = ctx.getImageData(0, 0, overlayCanvas.width, overlayCanvas.height);
             } catch (e) {
-                 if (this.debug) console.error("applyPreviewCanvasEffects: Error al obtener ImageData (posible taint):", e);
-                 // Fallback or just return? Maybe try CSS filters as fallback?
-                 viewBox.style.filter = this.generateAllCSSFilters(); // Fallback to CSS approximations
-                 return;
+                if (this.debug) console.error("applyOverlayEffects: Error al obtener ImageData:", e);
+                viewBox.style.filter = this.generateAllCSSFilters(); // Fallback a CSS en view-box
+                return;
             }
 
-            // 3. Aplicar ajustes a la ImageData del preview
             const modifiedImageData = this.applyAdjustmentsToImageData(imageData, this.settings);
-             if (this.debug) console.log("applyPreviewCanvasEffects: Ajustes aplicados a ImageData de preview.");
+            ctx.putImageData(modifiedImageData, 0, 0);
 
-            // 4. Poner la ImageData modificada de vuelta en el canvas de preview
-            previewCtx.putImageData(modifiedImageData, 0, 0);
-             if (this.debug) console.log("applyPreviewCanvasEffects: ImageData modificada puesta en canvas de preview.");
+            // Añadir el canvas overlay AL CROP-BOX
+            cropBox.appendChild(overlayCanvas);
+            if (this.debug) console.log("applyOverlayEffects: Overlay CREADO y añadido a crop-box");
 
-            // 5. Generar data URL y aplicarla como background
-            const dataUrl = previewCanvas.toDataURL();
-            viewBox.style.backgroundImage = `url(${dataUrl})`;
-            viewBox.style.backgroundSize = 'contain'; // o 'cover', dependiendo del efecto deseado
-            viewBox.style.backgroundRepeat = 'no-repeat';
-            viewBox.style.backgroundPosition = 'center';
+            // --- Listener Management --- 
+            this.detachCropListeners(cropper); 
+            const self = this;
 
+            this._cropStartListener = () => {
+                if (self.debug) console.log("Event: cropstart - Ocultando overlay");
+                overlayCanvas.style.display = 'none'; 
+            };
 
-            // 6. Ocultar la imagen original dentro del viewbox para que no interfiera
-            const imgElement = viewBox.querySelector('img');
-            if (imgElement) {
-                 imgElement.style.opacity = '0';
-                 if (this.debug) console.log("applyPreviewCanvasEffects: Imagen original ocultada.");
-            }
+            this._cropEndListener = () => {
+                if (self.debug) console.log("Event: cropend - Mostrando y actualizando overlay");
+                try {
+                    const currentViewBox = document.querySelector('.cropper-view-box'); // Re-obtener por si acaso
+                    if (currentViewBox) {
+                        const updatedViewBoxRect = currentViewBox.getBoundingClientRect();
 
-             if (this.debug) console.log("applyPreviewCanvasEffects: Preview actualizado con canvas.");
+                        // Actualizar tamaño del canvas existente (top/left son 0)
+                        overlayCanvas.width = updatedViewBoxRect.width;
+                        overlayCanvas.height = updatedViewBoxRect.height;
+                        overlayCanvas.style.width = `${updatedViewBoxRect.width}px`;
+                        overlayCanvas.style.height = `${updatedViewBoxRect.height}px`;
+
+                        // Re-dibujar contenido
+                        const newCroppedCanvas = cropper.getCroppedCanvas({
+                            width: updatedViewBoxRect.width * window.devicePixelRatio,
+                            height: updatedViewBoxRect.height * window.devicePixelRatio,
+                            imageSmoothingEnabled: true,
+                            imageSmoothingQuality: 'medium'
+                        });
+                        if(newCroppedCanvas) {
+                            const newCtx = overlayCanvas.getContext('2d', { willReadFrequently: true });
+                            // Limpiar antes de dibujar para evitar artefactos en tamaños diferentes
+                            newCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                            newCtx.drawImage(newCroppedCanvas, 0, 0, overlayCanvas.width, overlayCanvas.height);
+                            let newImageData = newCtx.getImageData(0, 0, overlayCanvas.width, overlayCanvas.height);
+                            let newModifiedImageData = self.applyAdjustmentsToImageData(newImageData, self.settings);
+                            newCtx.putImageData(newModifiedImageData, 0, 0);
+
+                            overlayCanvas.style.display = 'block'; // Mostrar de nuevo
+                            if (self.debug) console.log("Event: cropend - Overlay actualizado y mostrado");
+                        } else {
+                             if (self.debug) console.error("cropend: No se pudo obtener newCroppedCanvas");
+                        }
+                    } else {
+                        if (self.debug) console.error("cropend: No se encontraron viewBox actualizados");
+                    }
+                } catch(error) {
+                     console.error("Error dentro del listener cropend:", error);
+                     overlayCanvas.style.display = 'block'; 
+                }
+            };
+
+            // Attach new listeners
+            cropper.element.addEventListener('cropstart', this._cropStartListener);
+            cropper.element.addEventListener('cropend', this._cropEndListener);
+            if (this.debug) console.log("applyOverlayEffects: Listeners de cropstart/cropend añadidos");
 
         } catch (error) {
-            console.error("Error en applyPreviewCanvasEffects:", error);
-            // Fallback a filtros CSS si falla el canvas
-             viewBox.style.filter = this.generateAllCSSFilters();
+            console.error("Error en applyOverlayEffects:", error);
+            viewBox.style.filter = this.generateAllCSSFilters(); // Fallback
         }
     }
-
+    
     /**
      * Aplica todos los ajustes configurados directamente a un objeto ImageData.
      * @param {ImageData} imageData - El objeto ImageData a modificar.
@@ -352,8 +421,8 @@ class ImageAdjuster {
         const vibranceFactor = vibrance / 100.0; // Range -1 to 1
 
         // Contrast calculation: Adjust pixel based on distance from average (127)
-        // Para mayor compatibilidad con CSS filters, usamos el mismo cálculo que filter:contrast()
-        // CSS filter contrast utiliza: contrastFactor = 1 + (contrast/100)
+        // factor = (1 + contrastFactor) -> range 0 to 2
+        // newValue = factor * (oldValue - 127) + 127
         const contrastAdjust = (1 + contrastFactor);
 
         try {
@@ -364,18 +433,16 @@ class ImageAdjuster {
 
                 // 1. Brillo
                 if (brightnessFactor !== 0) {
-                    // Usar cálculo compatible con filter:brightness()
-                    r = r * (1 + brightnessFactor);
-                    g = g * (1 + brightnessFactor);
-                    b = b * (1 + brightnessFactor);
+                    r = Math.max(0, Math.min(255, r + brightnessFactor * 255));
+                    g = Math.max(0, Math.min(255, g + brightnessFactor * 255));
+                    b = Math.max(0, Math.min(255, b + brightnessFactor * 255));
                 }
 
                 // 2. Contraste
                 if (contrastFactor !== 0) {
-                    // Usar fórmula compatible con filter:contrast()
-                    r = (r - 127.5) * contrastAdjust + 127.5;
-                    g = (g - 127.5) * contrastAdjust + 127.5;
-                    b = (b - 127.5) * contrastAdjust + 127.5;
+                    r = Math.max(0, Math.min(255, contrastAdjust * (r - 127) + 127));
+                    g = Math.max(0, Math.min(255, contrastAdjust * (g - 127) + 127));
+                    b = Math.max(0, Math.min(255, contrastAdjust * (b - 127) + 127));
                 }
 
                 // 3. Saturación y Vibrance (trabajan en HSL)
@@ -604,6 +671,7 @@ export function initImageAdjustments(cropper) {
     // Resetear ajustes
     if (resetButton) {
         resetButton.addEventListener('click', () => {
+            console.log("Botón Reset presionado");
             const settings = imageAdjuster.resetSettings();
             
             // Actualizar UI
@@ -613,8 +681,10 @@ export function initImageAdjustments(cropper) {
             if (vibranceSlider) vibranceSlider.value = settings.vibrance;
             if (lutPresetSelect) lutPresetSelect.value = settings.lutPreset;
             
-            // Aplicar cambios
+            // Limpiar estado (overlay, listeners, filtros CSS)
+            // Llamar a apply() se encargará de esto ahora
             imageAdjuster.apply(cropper);
+            console.log("Ajustes reseteados y apply() llamado");
         });
     }
 } 
