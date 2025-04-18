@@ -19,6 +19,7 @@ const methodInfoBtn = document.getElementById('methodInfoBtn');
 // Get the new noise select dropdown and its container
 const noiseControlContainer = document.getElementById('noiseControlContainer');
 const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+const processingIndicator = document.getElementById('processingAdjustments');
 
 function handleOutputFormatChange() {
   const isTLoginFormat = outputFormatSelect.value === 't_login';
@@ -40,7 +41,26 @@ function handleOutputFormatChange() {
     noiseControlContainer.classList.remove('visible'); // Use visible class for transition
     methodInfoBtn.classList.add('hidden'); // Keep using hidden for button
     // Reset noise dropdown when hiding
+    const previousNoiseValue = noiseLevelSelect.value;
     noiseLevelSelect.value = '0'; 
+    
+    // If noise was previously active, force a preview update to remove it
+    if (cropper && imageAdjuster && previousNoiseValue !== '0') {
+      console.log("Format changed to t_login, removing noise effect from preview.");
+      // Show processing indicator
+      if (processingIndicator) {
+        processingIndicator.classList.add('show');
+      }
+      // Re-apply adjustments (will use noise=0 because dropdown was reset)
+      imageAdjuster.apply(cropper, (success) => {
+        // Hide processing indicator when complete
+        if (processingIndicator) {
+          setTimeout(() => {
+            processingIndicator.classList.remove('show');
+          }, 100); // Shorter delay needed here
+        }
+      });
+    }
   }
 
   // Controlar visibilidad y estado de selectPaletteMethod
@@ -207,6 +227,10 @@ async function handleImageLoad(file) {
       container.classList.add('fade-in');
     }, 300); // 300ms es la duración de tu transición CSS (ajusta si es diferente)
 
+    // Guardar el valor actual del noise select antes de reiniciar la UI
+    const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+    const previousNoiseValue = noiseLevelSelect.value;
+    noiseLevelSelect.value = '0';
 
     // --- Carga y dibujo de imagen (ASÍNCRONO) ---
     try {
@@ -284,6 +308,42 @@ async function handleImageLoad(file) {
                         // Añadir listener para redibujar en cambios futuros (drag, resize)
                         // Listen on the image element itself for crop events
                         imageToCrop.addEventListener('crop', drawCustomGuides);
+                    }
+                }
+                
+                // Inicializar módulos cuando el cropper está listo
+                if (window.initImageAdjustments) {
+                    window.initImageAdjustments(cropper);
+                    
+                    // Si había noise activo, restaurarlo después de la inicialización
+                    // Usar un timeout para asegurarse de que la inicialización se completó
+                    if (previousNoiseValue !== '0') {
+                        setTimeout(() => {
+                            console.log(`Restaurando valor de ruido anterior: ${previousNoiseValue}`);
+                            noiseLevelSelect.value = previousNoiseValue;
+                            // Forzar la actualización del overlay para aplicar el ruido
+                            if (window.imageAdjuster) {
+                                const processingIndicator = document.getElementById('processingAdjustments');
+                                if (processingIndicator) processingIndicator.classList.add('show');
+                                
+                                window.imageAdjuster.apply(cropper, (success) => {
+                                    if (processingIndicator) processingIndicator.classList.remove('show');
+                                    console.log(`Ruido restaurado y aplicado: ${success}`);
+                                });
+                            }
+                        }, 300);
+                    }
+                }
+                
+                if (window.initLogoOverlay) {
+                    window.initLogoOverlay(cropper);
+                }
+                
+                // Actualizar estado de las guías
+                if (window.gridGuides) {
+                    const guideCanvas = document.getElementById('guideCanvas');
+                    if (guideCanvas) {
+                        window.gridGuides.setGuideCanvas(guideCanvas);
                     }
                 }
             } // Fin del 'ready' callback
@@ -367,6 +427,40 @@ async function generateJpegFromCanvas(imageData, preciseCropData, isFullSelectio
             throw new Error("Failed to create final canvas for JPEG.");
         }
 
+        // --- Apply Image Adjustments ---            
+        const finalCtx = finalCanvas.getContext('2d', { willReadFrequently: true });
+        if (!imageAdjuster.isNeutral() || (document.getElementById('noiseLevelSelect') && parseInt(document.getElementById('noiseLevelSelect').value, 10) > 0)) {
+            console.log("Applying adjustments and/or noise to JPEG...");
+            try {
+                let imageData = finalCtx.getImageData(0, 0, finalCanvas.width, finalCanvas.height);
+                // Get noise intensity for final export
+                const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+                const noiseIntensity = noiseLevelSelect ? parseInt(noiseLevelSelect.value, 10) : 0;
+                // Apply adjustments AND noise
+                let modifiedImageData = imageAdjuster.applyAdjustmentsToImageData(imageData, imageAdjuster.settings, noiseIntensity);
+                finalCtx.putImageData(modifiedImageData, 0, 0);
+                console.log("Adjustments/Noise applied successfully to JPEG.");
+            } catch (error) {
+                console.error("Error applying adjustments/noise to JPEG:", error);
+                // Continue without adjustments if error occurs
+            }
+        }
+        // --- End Apply Image Adjustments ---
+
+        // --- Add Logo Overlay to final canvas ---
+        if (window.logoOverlay && window.logoOverlay.settings.visible && window.logoOverlay.logoImage) {
+            try {
+                console.log("Adding logo overlay to JPEG...");
+                // Calculate logo position and size relative to final canvas
+                drawLogoOverlayOnCanvas(finalCtx, finalCanvas.width, finalCanvas.height);
+                console.log("Logo overlay added successfully to JPEG.");
+            } catch (error) {
+                console.error("Error adding logo overlay to JPEG:", error);
+                // Continue without logo if error occurs
+            }
+        }
+        // --- End Add Logo Overlay ---
+
         finalCanvas.toBlob((blob) => {
             try {
                 if (blob) {
@@ -392,7 +486,8 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
             const scaleY = originalImageHeight / imageData.naturalHeight;
             const finalWidth = Math.round(preciseCropData.width * scaleX);
             const finalHeight = Math.round(preciseCropData.height * scaleY);
-            const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: true };
+            // Cambiar imageSmoothingEnabled a false para evitar que se vea borroso
+            const cropOptions = { width: finalWidth, height: finalHeight, imageSmoothingEnabled: false };
             finalCanvas = cropper.getCroppedCanvas(cropOptions);
             if (Math.abs(finalCanvas.width - finalWidth) > 1 || Math.abs(finalCanvas.height - finalHeight) > 1) {
                 console.warn(`Dimensiones del canvas recortado difieren ligeramente de las calculadas.`);
@@ -402,6 +497,40 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
         if (!finalCanvas) {
             throw new Error("Failed to create final canvas for BMP.");
         }
+
+        // --- Apply Image Adjustments ---
+        const finalCtx = finalCanvas.getContext('2d', { willReadFrequently: true });
+        // Establecer alta calidad para el canvas final
+        finalCtx.imageSmoothingEnabled = true;
+        finalCtx.imageSmoothingQuality = 'high';
+        
+        if (!imageAdjuster.isNeutral()) {
+            console.log("Applying adjustments to BMP canvas before splitting...");
+            try {
+                let imageData = finalCtx.getImageData(0, 0, finalCanvas.width, finalCanvas.height);
+                let modifiedImageData = imageAdjuster.applyAdjustmentsToImageData(imageData, imageAdjuster.settings);
+                finalCtx.putImageData(modifiedImageData, 0, 0);
+                console.log("Adjustments applied successfully to BMP canvas.");
+            } catch (error) {
+                console.error("Error applying adjustments to BMP canvas:", error);
+                // Continue without adjustments if error occurs
+            }
+        }
+        // --- End Apply Image Adjustments ---
+
+        // --- Add Logo Overlay to final canvas ---
+        if (window.logoOverlay && window.logoOverlay.settings.visible && window.logoOverlay.logoImage) {
+            try {
+                console.log("Adding logo overlay to BMP...");
+                // Draw logo on the canvas before splitting
+                drawLogoOverlayOnCanvas(finalCtx, finalCanvas.width, finalCanvas.height);
+                console.log("Logo overlay added successfully to BMP.");
+            } catch (error) {
+                console.error("Error adding logo overlay to BMP:", error);
+                // Continue without logo if error occurs
+            }
+        }
+        // --- End Add Logo Overlay ---
 
         // Lógica existente para procesar BMP desde finalCanvas
         finalCanvas.toBlob(async (blob) => { // Callback is already async
@@ -475,6 +604,156 @@ async function generateBmpFromCanvas(imageData, preciseCropData, isFullSelection
         }
         // cropButton.classList.remove('processing'); // Remove if not used
     }
+}
+
+/**
+ * Dibuja el logo overlay en el canvas final con máxima calidad
+ * @param {CanvasRenderingContext2D} ctx - Contexto del canvas donde dibujar
+ * @param {number} canvasWidth - Ancho del canvas
+ * @param {number} canvasHeight - Alto del canvas
+ */
+function drawLogoOverlayOnCanvas(ctx, canvasWidth, canvasHeight) {
+    // Asegurarse de que el logo overlay está visible y existe
+    if (!window.logoOverlay || !window.logoOverlay.settings.visible || !window.logoOverlay.logoImage) {
+        return;
+    }
+
+    // Obtener datos necesarios
+    const logo = window.logoOverlay;
+    const cropBoxData = cropper.getCropBoxData();
+    
+    // Usar preferentemente la versión de alta calidad si está disponible
+    const logoImg = logo.highQualityLogo || logo.logoImage;
+    
+    // Calcular la posición y escala del logo en el canvas final
+    const scaleX = canvasWidth / cropBoxData.width;
+    const scaleY = canvasHeight / cropBoxData.height;
+    
+    // Calcular la posición relativa del logo respecto al crop box
+    const relativeX = logo.settings.x - cropBoxData.left;
+    const relativeY = logo.settings.y - cropBoxData.top;
+    
+    // Calcular las dimensiones escaladas del logo
+    const scaledX = relativeX * scaleX;
+    const scaledY = relativeY * scaleY;
+    const scaledWidth = logo.settings.width * scaleX;
+    const scaledHeight = logo.settings.height * scaleY;
+    
+    // Factor de supersampling - aumentamos el factor de 2 a 4 para mayor calidad
+    const supersamplingFactor = 4;
+    
+    // Crear un canvas intermedio de alta resolución para mejorar calidad
+    const hiResCanvas = document.createElement('canvas');
+    const hiResCtx = hiResCanvas.getContext('2d', { alpha: true });
+    
+    // Establecer tamaño con supersampling y un padding suficiente para la rotación
+    const padding = Math.max(scaledWidth, scaledHeight) * 0.6; // Incrementado el padding para evitar recortes
+    hiResCanvas.width = (scaledWidth + padding * 2) * supersamplingFactor;
+    hiResCanvas.height = (scaledHeight + padding * 2) * supersamplingFactor;
+    
+    // Desactivar suavizado temporalmente para dibujo inicial (previene blur en bordes nítidos)
+    hiResCtx.imageSmoothingEnabled = false;
+    
+    // Aplicar transformaciones en alta resolución
+    hiResCtx.save();
+    
+    // Centrar, rotar y dibujar el logo (con los factores de supersampling)
+    hiResCtx.translate(hiResCanvas.width / 2, hiResCanvas.height / 2);
+    hiResCtx.rotate(logo.settings.rotation * Math.PI / 180);
+    hiResCtx.translate(-scaledWidth * supersamplingFactor / 2, -scaledHeight * supersamplingFactor / 2);
+    
+    // Dibujar el logo con alta resolución
+    hiResCtx.drawImage(
+        logoImg,
+        0, 0,
+        logoImg.naturalWidth, logoImg.naturalHeight,
+        0, 0,
+        scaledWidth * supersamplingFactor, 
+        scaledHeight * supersamplingFactor
+    );
+    
+    hiResCtx.restore();
+    
+    // Aplicar un filtro de nitidez original si es necesario
+    try {
+        // Solo aplicar nitidez si la imagen se redujo significativamente
+        if (scaledWidth < logoImg.naturalWidth * 0.8) {
+            applySharpening(hiResCtx, 0, 0, hiResCanvas.width, hiResCanvas.height);
+        }
+    } catch (e) {
+        console.log("Original sharpening not applied:", e);
+    }
+    
+    // Dibujar en el canvas final con alta calidad
+    ctx.save();
+    
+    // Configurar mezcla con alpha para preservar transparencia
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = logo.settings.opacity / 100;
+    
+    // Establecer suavizado de alta calidad
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    
+    // Usar el canvas de alta resolución como fuente
+    ctx.drawImage(
+        hiResCanvas,
+        0, 0, hiResCanvas.width, hiResCanvas.height,
+        scaledX - padding, scaledY - padding, 
+        scaledWidth + padding * 2, scaledHeight + padding * 2
+    );
+    
+    ctx.restore();
+}
+
+/**
+ * Aplica un filtro de nitidez a una sección del canvas
+ * @param {CanvasRenderingContext2D} ctx - Contexto del canvas
+ * @param {number} x - Posición X inicial
+ * @param {number} y - Posición Y inicial
+ * @param {number} width - Ancho del área
+ * @param {number} height - Alto del área
+ */
+function applySharpening(ctx, x, y, width, height) {
+    // Obtener los datos de imagen
+    const imageData = ctx.getImageData(x, y, width, height);
+    const data = imageData.data;
+    const factor = 0.5; // Intensidad del filtro de nitidez
+    const kernel = [
+        0, -factor, 0,
+        -factor, 1 + 4 * factor, -factor,
+        0, -factor, 0
+    ];
+    
+    // Crear un array temporal para los resultados
+    const tempData = new Uint8ClampedArray(data.length);
+    tempData.set(data);
+    
+    // Aplicar el kernel de nitidez
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            for (let c = 0; c < 3; c++) { // Solo procesar R, G, B (no alpha)
+                const idx = (y * width + x) * 4 + c;
+                let sum = 0;
+                
+                // Aplicar el kernel de convolución
+                sum += data[(y - 1) * width * 4 + x * 4 + c] * kernel[1];
+                sum += data[y * width * 4 + (x - 1) * 4 + c] * kernel[3];
+                sum += data[y * width * 4 + x * 4 + c] * kernel[4];
+                sum += data[y * width * 4 + (x + 1) * 4 + c] * kernel[5];
+                sum += data[(y + 1) * width * 4 + x * 4 + c] * kernel[7];
+                
+                tempData[idx] = Math.max(0, Math.min(255, sum));
+            }
+        }
+    }
+    
+    // Escribir los datos de vuelta al canvas
+    for (let i = 0; i < data.length; i++) {
+        data[i] = tempData[i];
+    }
+    
+    ctx.putImageData(imageData, x, y);
 }
 
 // Función auxiliar para crear el canvas de tamaño completo (usada en fallbacks y BMP)
@@ -559,6 +838,8 @@ import popularityQuantization from './popularityQuantization.js';
 import neuQuant from './neuquant.js';
 import errorDiffusionDithering from './errorDiffusionDithering.js';
 import { nearestColorIndex } from './utils.js';
+// Import the image adjuster instance
+import imageAdjuster from './imageAdjustments.js';
 
 // Modify imageDataToBMP to work with a sub-rectangle of a larger ImageData
 function imageDataToBMP(sourceImageData, sourceTotalWidth, sx, sy, width, height) {
@@ -811,21 +1092,91 @@ function applyNoiseToSubRectangle(sourceData, sourceTotalWidth, sx, sy, width, h
     }
 }
 
+// Common function for all aspect ratio button handlers
+function handleAspectRatioChange(ratio) {
+    const processingIndicator = document.getElementById('processingAdjustments');
+    const overlayCanvas = document.querySelector('.image-adjuster-overlay'); // Find existing overlay
+    
+    // 1. Show processing indicator immediately
+    if (processingIndicator) {
+        processingIndicator.classList.add('show');
+    }
+    
+    // 2. Check if adjustments are active BEFORE removing overlay/changing ratio
+    const hasAdjustments = window.imageAdjuster && !window.imageAdjuster.isNeutral();
+    const noiseLevelSelect = document.getElementById('noiseLevelSelect');
+    const noiseIntensity = noiseLevelSelect ? parseInt(noiseLevelSelect.value, 10) : 0;
+    const needsOverlay = hasAdjustments || noiseIntensity > 0;
+    
+    // 3. Immediately HIDE any existing overlay visually
+    if (overlayCanvas) {
+        overlayCanvas.style.display = 'none'; 
+        if(window.imageAdjuster && window.imageAdjuster.debug) console.log("Aspect ratio change: Hiding overlay canvas.");
+    }
+    
+    // 4. Apply aspect ratio change after a minimal delay for UI update
+    setTimeout(() => {
+        try {
+            if (cropper) {
+                 // Clean up listeners/full overlay state *before* potentially blocking aspect ratio change
+                 if (window.imageAdjuster) {
+                     window.imageAdjuster.removeOverlay(); 
+                 }
+                 
+                cropper.setAspectRatio(ratio);
+                
+                // 5. Re-apply adjustments ONLY if they were active (or noise was on)
+                if (needsOverlay && window.imageAdjuster) {
+                    // Use a slightly longer timeout to ensure the cropper has fully updated
+                    setTimeout(() => {
+                        console.log(`Reapplying adjustments/noise after aspect ratio change to ${ratio}`);
+                        window.imageAdjuster.apply(cropper, (success) => {
+                            // Callback in apply hides the indicator
+                            if (!success) {
+                                // If apply fails, ensure indicator is hidden
+                                if (processingIndicator) {
+                                    processingIndicator.classList.remove('show');
+                                }
+                            }
+                        });
+                    }, 50); // Slight delay to ensure cropper is ready
+                } else {
+                    // If no adjustments needed re-applying, hide indicator now
+                    if (processingIndicator) {
+                        processingIndicator.classList.remove('show');
+                    }
+                }
+            } else {
+                 // If no cropper, hide indicator
+                 if (processingIndicator) {
+                      processingIndicator.classList.remove('show');
+                 }
+            }
+        } catch (error) {
+            console.error("Error setting aspect ratio or reapplying adjustments:", error);
+            // Ensure indicator is hidden on error
+            if (processingIndicator) {
+                processingIndicator.classList.remove('show');
+            }
+        }
+    }, 10); // Minimal timeout (10ms) for UI update before cropper action
+}
+
+// Set up all aspect ratio button click handlers
 document.getElementById('aspectRatio169').addEventListener('click', () => {
-    cropper.setAspectRatio(16 / 9);
+    handleAspectRatioChange(16/9);
 });
 
 document.getElementById('aspectRatio43').addEventListener('click', () => {
-    cropper.setAspectRatio(4 / 3);
+    handleAspectRatioChange(4/3);
 });
 
 document.getElementById('aspectRatio11').addEventListener('click', () => {
-    cropper.setAspectRatio(1);
+    handleAspectRatioChange(1);
 });
 
 document.getElementById('aspectRatioFree').addEventListener('click', () => {
-    // Eliminar cualquier relación de aspecto fija
-    cropper.setAspectRatio(NaN);
+    handleAspectRatioChange(NaN);
 });
 
 // Drag and Drop Functionality
@@ -941,12 +1292,6 @@ function drawCustomGuides() {
 function resetUI() {
   // Si hay un cropper activo, destruirlo
   if (cropper) {
-    // Remover listener de guías ANTES de destruir el cropper
-    // Listen on imageToCrop now
-    if (imageToCrop) {
-      imageToCrop.removeEventListener('crop', drawCustomGuides);
-    }
-
     // Revocar URL de objeto antes de destruir
     if (cropper.url) {
         URL.revokeObjectURL(cropper.url);
@@ -999,6 +1344,22 @@ function resetUI() {
       dropZone.classList.remove('fade-out');
     }, 50);
   }, 300);
+
+  // Reset any active logo overlay
+  if (window.logoOverlay) {
+    window.logoOverlay.removeLogo();
+  }
+  
+  // Update checkboxes in the UI
+  const showLogoCheckbox = document.getElementById('showLogoOverlay');
+  if (showLogoCheckbox) {
+    showLogoCheckbox.checked = false;
+  }
+  
+  const logoControls = document.getElementById('logoControls');
+  if (logoControls) {
+    logoControls.classList.add('hidden');
+  }
 }
 
 // Reemplazar el event listener existente para el botón reset
@@ -1235,6 +1596,30 @@ document.addEventListener('DOMContentLoaded', () => {
   let loginBoxOverlay = null;
   let originalLoginBoxWidth = 0;
   let originalLoginBoxHeight = 0;
+  
+  // Importar e inicializar las nuevas funcionalidades
+  import('./accordionHandler.js').then(module => {
+    module.initAccordion();
+  }).catch(err => console.error('Error loading accordion module:', err));
+  
+  // Inicializar ajustes de imagen cuando el cropper esté listo
+  import('./imageAdjustments.js').then(module => {
+    // Se inicializará cuando el cropper esté listo (llamada desde handleImageLoad)
+    window.initImageAdjustments = module.initImageAdjustments;
+  }).catch(err => console.error('Error loading image adjustments module:', err));
+  
+  // Inicializar logo overlay cuando el cropper esté listo
+  import('./logoOverlay.js').then(module => {
+    // Se inicializará cuando el cropper esté listo (llamada desde handleImageLoad)
+    window.initLogoOverlay = module.initLogoOverlay;
+    window.logoOverlay = module.default;
+  }).catch(err => console.error('Error loading logo overlay module:', err));
+  
+  // Inicializar grid guides
+  import('./gridGuides.js').then(module => {
+    module.initGridGuides();
+    window.gridGuides = module.default;
+  }).catch(err => console.error('Error loading grid guides module:', err));
   
   // Toggle sidebar visibility
   sidebarTab.addEventListener('click', () => {

@@ -169,6 +169,7 @@ body.dark-mode select option {
   opacity: 0.75;
   width: 12px!important;
   border-radius: 50% !important;
+  z-index: 3;
 }
 
 .cropper-line {
@@ -237,6 +238,10 @@ body.dark-mode select option {
 .cropper-modal {
   border-radius: 12px;
   overflow: hidden;
+}
+
+.cropper-center{
+  z-index: 3;
 }
 
 /* Asegurar que el z-index y pointer-events estén correctamente configurados */
@@ -384,6 +389,185 @@ body:not(.dark-mode) #noticeProgressBar {
   transform: rotate(180deg);
 }
 
+/* Accordion styles */
+.accordion-btn {
+  cursor: pointer;
+  padding: 0.5rem 0;
+  user-select: none;
+}
+
+.accordion-icon {
+  transition: transform 0.3s ease;
+}
+
+.accordion-btn.active .accordion-icon {
+  transform: rotate(180deg);
+}
+
+/* Range input styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  height: 6px;
+  border-radius: 6px;
+  background: #e2e8f0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #10b981;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #10b981;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+body.dark-mode input[type="range"] {
+  background: #4b5563;
+}
+
+input[type="range"]:focus {
+  outline: none;
+}
+
+input[type="range"]:hover::-webkit-slider-thumb {
+  background: #059669;
+}
+
+input[type="range"]:hover::-moz-range-thumb {
+  background: #059669;
+}
+
+/* Logo overlay styles */
+#logoOverlay {
+  position: absolute;
+  pointer-events: auto;
+  z-index: 14;
+  transition: opacity 0.3s ease;
+  transform-origin: center center;
+  /* Mejorar la calidad de renderizado */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: high-quality;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 0 1px rgba(0,0,0,0.5));
+}
+
+#logoOverlay.draggable {
+  pointer-events: auto;
+  cursor: grab;
+}
+
+#logoOverlay.draggable:active {
+  cursor: grabbing;
+}
+
+#logoOverlay.resizing {
+  pointer-events: auto;
+  cursor: nwse-resize;
+}
+
+#logoOverlay.rotating {
+  pointer-events: auto;
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>'), auto;
+}
+
+/* Estilos para los controles del logo overlay */
+.logo-controls-container {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  padding: 5px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: opacity 0.3s ease;
+}
+
+.logo-control-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.logo-control-btn:hover {
+  transform: scale(1.1);
+}
+
+.logo-control-btn[data-action="move"]:hover,
+.logo-control-btn[data-action="resize"]:hover,
+.logo-control-btn[data-action="rotate"]:hover {
+  background-color: #10b981;
+  color: white;
+}
+
+.logo-control-btn[data-action="delete"] {
+  background-color: #ef4444;
+  color: white;
+}
+
+.logo-control-btn[data-action="delete"]:hover {
+  background-color: #dc2626;
+}
+
+/* Tooltip de edición */
+.editing-tooltip {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  z-index: 100;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+.editing-tooltip.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.editing-tooltip .mode {
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.editing-tooltip .key-hint {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
 /* Login box overlay styles */
 #loginBoxOverlay {
   position: absolute;
@@ -407,5 +591,39 @@ body:not(.dark-mode) #noticeProgressBar {
 #showLoginBox:checked {
   background-color: #10b981;
   border-color: #10b981;
+}
+
+/* Processing indicator animation */
+#processingAdjustments {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+#processingAdjustments.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Ensure processing indicator is on top of other popups */
+#processingAdjustments {
+  z-index: 60 !important;
+}
+
+/* Custom styles for slider thumb */
+.slider-thumb-green::-webkit-slider-thumb {
+  background-color: #10b981; /* Green accent */
+}
+
+.slider-thumb-green::-moz-range-thumb {
+  background-color: #10b981; /* Green accent */
+}
+
+.slider-thumb-green:hover::-webkit-slider-thumb {
+  background-color: #059669; /* Darker green on hover */
+}
+
+.slider-thumb-green:hover::-moz-range-thumb {
+  background-color: #059669; /* Darker green on hover */
 }
 
