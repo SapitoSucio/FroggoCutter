@@ -956,17 +956,19 @@ export function initLogoOverlay(cropper) {
     const uploadLogoBtn = document.getElementById('uploadLogoBtn');
     const logoInput = document.getElementById('logoInput');
     const logoOpacitySlider = document.getElementById('logoOpacity');
+    const logoActiveStatus = document.getElementById('logoActiveStatus');
     
-    // Toggle de visibilidad del logo
+    // Toggle de visibilidad del logo (ahora maneja el checkbox oculto)
     if (showLogoCheckbox) {
         showLogoCheckbox.addEventListener('change', function() {
-            // Mostrar/ocultar controles
-            if (logoControls) {
-                logoControls.classList.toggle('hidden', !this.checked);
-            }
-            
+            // Mostrar/ocultar controles (ya no es necesario)
             // Actualizar visibilidad del logo
             logoOverlay.updateVisibility(this.checked);
+            
+            // Actualizar el badge de estado activo
+            if (logoActiveStatus) {
+                logoActiveStatus.classList.toggle('hidden', !this.checked);
+            }
         });
     }
     
@@ -980,7 +982,20 @@ export function initLogoOverlay(cropper) {
             if (e.target.files.length > 0) {
                 const file = e.target.files[0];
                 if (file.type.startsWith('image/')) {
+                    // Asegurar que el checkbox esté marcado antes de crear el logo
+                    if (showLogoCheckbox && !showLogoCheckbox.checked) {
+                        showLogoCheckbox.checked = true;
+                        // Disparar el evento change para actualizar la visibilidad
+                        const event = new Event('change');
+                        showLogoCheckbox.dispatchEvent(event);
+                    }
+                    
                     await logoOverlay.createLogo(cropper, file);
+                    
+                    // Mostrar el indicador de activo
+                    if (logoActiveStatus) {
+                        logoActiveStatus.classList.remove('hidden');
+                    }
                 }
             }
         });

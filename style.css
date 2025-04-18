@@ -370,15 +370,28 @@ body:not(.dark-mode) #noticeProgressBar {
   height: auto;
   box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
   will-change: transform;
+  top: 15%; /* Moved higher up from 25% */
 }
 
 #sidebar.open {
   transform: translateX(0);
 }
 
+/* Increase sidebar content width */
+#sidebar .bg-white.dark\:bg-gray-800 {
+  width: 280px; /* Increased from 64px (16rem) */
+}
+
 #sidebar-tab {
   will-change: transform;
-  transition: background-color 0.3s;
+  transition: all 0.4s ease-in-out;
+  opacity: 0;
+  transform: translateX(-100%) scale(0.9);
+}
+
+#sidebar-tab.visible {
+  opacity: 1;
+  transform: translateX(-100%) scale(1);
 }
 
 #sidebar-tab svg {
@@ -389,62 +402,251 @@ body:not(.dark-mode) #noticeProgressBar {
   transform: rotate(180deg);
 }
 
-/* Accordion styles */
-.accordion-btn {
+/* Modern Accordion styles */
+.accordion-section {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(229, 231, 235, 0.1);
+  transition: all 0.3s ease;
+}
+
+body:not(.dark-mode) .accordion-section {
+  background-color: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.accordion-section:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.accordion-header {
+  padding: 0.75rem 1rem;
   cursor: pointer;
-  padding: 0.5rem 0;
   user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 500;
+  color: inherit;
+  transition: all 0.2s ease;
 }
 
-.accordion-icon {
-  transition: transform 0.3s ease;
+.accordion-header:hover {
+  background-color: rgba(16, 185, 129, 0.1);
 }
 
-.accordion-btn.active .accordion-icon {
+.accordion-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background-color: rgba(16, 185, 129, 0.1);
+  transition: all 0.3s ease;
+}
+
+.accordion-header.active .accordion-icon-container {
+  background-color: #10b981;
   transform: rotate(180deg);
 }
 
-/* Range input styling */
+.accordion-header.active .accordion-icon-container svg {
+  color: white;
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out, padding 0.3s ease;
+  padding: 0 1rem;
+}
+
+.accordion-content.open {
+  max-height: 1000px; /* Large enough to fit content */
+  padding: 0.5rem 1rem 1rem;
+}
+
+/* Modern toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+  flex-shrink: 0; /* Prevent the switch from shrinking */
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: #10b981;
+}
+
+input:focus + .toggle-slider {
+  box-shadow: 0 0 1px #10b981;
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+.toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(229, 231, 235, 0.1);
+  margin-bottom: 0.75rem;
+  transition: all 0.3s ease;
+  gap: 1rem; /* Add consistent gap */
+}
+
+/* Added new style for the text container */
+.toggle-container > div {
+  flex: 1;
+  max-width: calc(100% - 60px); /* Ensure there's space for the toggle switch */
+}
+
+body:not(.dark-mode) .toggle-container {
+  background-color: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.toggle-container:hover {
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+.toggle-label {
+  font-weight: 500;
+  cursor: pointer;
+  display: block; /* Ensure label takes full width of its container */
+}
+
+/* Custom button styles for the logo section */
+.logo-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border: none;
+  width: 100%;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.logo-action-btn:hover {
+  background-color: #10b981;
+  color: white;
+}
+
+.logo-action-btn svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Override existing accordion styles */
+.accordion-btn {
+  display: none; /* Hide old buttons */
+}
+
+/* Slider labels with accent color */
+.slider-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #10b981;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+/* Range slider improved appearance */
 input[type="range"] {
-  -webkit-appearance: none;
-  height: 6px;
-  border-radius: 6px;
-  background: #e2e8f0;
+  height: 8px;
+  background: rgba(16, 185, 129, 0.2);
 }
 
 input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   background: #10b981;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 input[type="range"]::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   background: #10b981;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-body.dark-mode input[type="range"] {
-  background: #4b5563;
+/* Improve select box appearance */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2310b981'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1rem;
+  padding-right: 2rem;
 }
 
-input[type="range"]:focus {
-  outline: none;
+/* Badge for showing active state */
+.active-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 0.5rem;
+  transition: all 0.3s ease;
 }
 
-input[type="range"]:hover::-webkit-slider-thumb {
-  background: #059669;
-}
-
-input[type="range"]:hover::-moz-range-thumb {
-  background: #059669;
+.active-badge.hidden {
+  opacity: 0;
+  width: 0;
+  margin-left: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 /* Logo overlay styles */

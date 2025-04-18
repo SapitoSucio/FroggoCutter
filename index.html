@@ -103,7 +103,7 @@
                              data-tippy-content="Adding noise can significantly improve the image quality displayed on the RO client.">
                             <label for="noiseLevelSelect" class="">Noise:</label>
                             <select id="noiseLevelSelect" class="rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500">
-                                <option value="0">No Noise</option>
+                                <option value="0">Noisen't</option>
                                 <option value="8">Low</option>
                                 <option value="16">Medium</option> <!-- Added Medium -->
                                 <option value="32">Over 9000</option> <!-- Renamed High -->
@@ -251,7 +251,7 @@
     </div>
 
     <!-- After the dark mode button and before the largeImageNotice -->
-    <div id="sidebar" class="fixed right-0 top-1/4 z-40 transform transition-transform duration-300 translate-x-full">
+    <div id="sidebar" class="fixed right-0 z-40 transform transition-transform duration-300 translate-x-full">
         <!-- Sidebar tab -->
         <div id="sidebar-tab" class="absolute left-0 top-0 transform -translate-x-full bg-gray-800 dark:bg-gray-900 text-white px-4 py-3 rounded-l-xl cursor-pointer hover:bg-green-600 transition-colors duration-300 flex items-center">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -264,28 +264,31 @@
         <div class="bg-white dark:bg-gray-800 p-4 rounded-tr-xl rounded-bl-xl rounded-br-xl shadow-lg w-64">
             <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">Additional Options</h3>
             
-            <!-- Login box option -->
-            <div class="mb-3">
-                <label class="flex items-center space-x-2 text-gray-900 dark:text-white cursor-pointer">
-                    <input type="checkbox" id="showLoginBox" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
-                    <span>Show Login Box</span>
-                </label>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Displays the login box overlay (won't appear in final image)</p>
-            </div>
-
             <!-- Accordion sections -->
             <!-- Image Adjustments -->
-            <div class="border-t border-gray-200 dark:border-gray-700 py-2">
-                <button class="accordion-btn flex justify-between items-center w-full font-medium text-gray-900 dark:text-white hover:text-green-600 focus:outline-none transition-colors">
-                    <span>Image Adjustments</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform transition-transform accordion-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-                <div class="accordion-content hidden mt-2 space-y-2">
+            <div class="accordion-section">
+                <div class="accordion-header" data-accordion="imageAdjustments">
+                    <div class="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                        <span>Image Adjustments</span>
+                    </div>
+                    <div class="accordion-icon-container">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="accordion-content" id="imageAdjustments-content">
                     <!-- LUT Presets -->
-                    <div class="mb-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">LUT Presets</label>
+                    <div class="mb-3">
+                        <label class="slider-label">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                            </svg>
+                            LUT Presets
+                        </label>
                         <select id="lutPreset" class="w-full rounded-lg px-3 py-2 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
                             <option value="none">None</option>
                             <option value="warm">Warm</option>
@@ -297,40 +300,68 @@
                     </div>
                     
                     <!-- Sliders for adjustment -->
-                    <div class="mb-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Brightness</label>
-                        <input type="range" id="brightness" min="-100" max="100" value="0" class="w-full h-2 bg-gray-300 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer">
-                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <div class="mb-3">
+                        <label class="slider-label">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            Brightness
+                        </label>
+                        <input type="range" id="brightness" min="-100" max="100" value="0" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
                             <span>-100</span>
                             <span>0</span>
                             <span>+100</span>
                         </div>
                     </div>
                     
-                    <div class="mb-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Contrast</label>
-                        <input type="range" id="contrast" min="-100" max="100" value="0" class="w-full h-2 bg-gray-300 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer">
-                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <div class="mb-3">
+                        <label class="slider-label">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 32 32">
+                                <path d="M0 16q0 3.264 1.28 6.24t3.392 5.088 5.12 3.424 6.208 1.248q3.264 0 6.24-1.248t5.088-3.424 3.392-5.088 1.28-6.24-1.28-6.208-3.392-5.12-5.088-3.392-6.24-1.28q-3.264 0-6.208 1.28t-5.12 3.392-3.392 5.12-1.28 6.208zM4 16q0-3.264 1.6-6.016t4.384-4.352 6.016-1.632 6.016 1.632 4.384 4.352 1.6 6.016-1.6 6.048-4.384 4.352-6.016 1.6-6.016-1.6-4.384-4.352-1.6-6.048zM16 26.016q2.72 0 5.024-1.344t3.648-3.648 1.344-5.024-1.344-4.992-3.648-3.648-5.024-1.344v20z"></path>
+                            </svg>
+                            Contrast
+                        </label>
+                        <input type="range" id="contrast" min="-100" max="100" value="0" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
                             <span>-100</span>
                             <span>0</span>
                             <span>+100</span>
                         </div>
                     </div>
                     
-                    <div class="mb-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Saturation</label>
-                        <input type="range" id="saturation" min="-100" max="100" value="0" class="w-full h-2 bg-gray-300 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer">
-                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <div class="mb-3">
+                        <label class="slider-label">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <g class="stroke-current">
+                                    <circle class="stroke-current" cx="5.73" cy="13.45" r="0.48"></circle>
+                                    <circle class="stroke-current" cx="7.65" cy="18.24" r="0.48"></circle>
+                                    <circle class="stroke-current" cx="6.69" cy="8.65" r="0.48"></circle>
+                                    <circle class="stroke-current" cx="10.52" cy="5.78" r="0.48"></circle>
+                                    <circle class="stroke-current" cx="15.32" cy="6.74" r="0.48"></circle>
+                                    <circle class="stroke-current" cx="18.2" cy="10.57" r="0.48"></circle>
+                                    <path class="stroke-current" d="M22.51,11.86a4.87,4.87,0,0,1-4.86,4.95H16.18a4.28,4.28,0,0,0-3.57,1.91l-1.15,1.72a4.74,4.74,0,0,1-4,2.12h0a4.61,4.61,0,0,1-3.87-2A13.07,13.07,0,0,1,1.41,13.3V12a10.55,10.55,0,0,1,21.1-.15Z"></path>
+                                </g>
+                            </svg>
+                            Saturation
+                        </label>
+                        <input type="range" id="saturation" min="-100" max="100" value="0" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
                             <span>-100</span>
                             <span>0</span>
                             <span>+100</span>
                         </div>
                     </div>
                     
-                    <div class="mb-2">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vibrance</label>
-                        <input type="range" id="vibrance" min="-100" max="100" value="0" class="w-full h-2 bg-gray-300 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer">
-                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <div class="mb-3">
+                        <label class="slider-label">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Vibrance
+                        </label>
+                        <input type="range" id="vibrance" min="-100" max="100" value="0" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
                             <span>-100</span>
                             <span>0</span>
                             <span>+100</span>
@@ -338,66 +369,102 @@
                     </div>
                     
                     <div>
-                        <button id="resetAdjustments" class="w-full px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-green-600 hover:text-white transition-colors duration-300 mt-2">Reset</button>
+                        <button id="resetAdjustments" class="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-green-600 hover:text-white transition-colors duration-300 mt-2 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Reset Adjustments
+                        </button>
                     </div>
                 </div>
             </div>
             
-            <!-- Logo Overlay option -->
-            <div class="border-t border-gray-200 dark:border-gray-700 py-2">
-                <button class="accordion-btn flex justify-between items-center w-full font-medium text-gray-900 dark:text-white hover:text-green-600 focus:outline-none transition-colors">
-                    <span>Logo Overlay</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform transition-transform accordion-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-                <div class="accordion-content hidden mt-2 space-y-4">
-                    <label class="flex items-center space-x-2 text-gray-900 dark:text-white cursor-pointer">
-                        <input type="checkbox" id="showLogoOverlay" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
-                        <span>Show Logo Overlay</span>
-                    </label>
-                    <div id="logoControls" class="mt-1 space-y-3 hidden">
-                        <p class="text-xs text-gray-600 dark:text-gray-400">Upload your logo (PNG recommended). Click it on the image to show transform controls.</p>
-                        <button id="uploadLogoBtn" class="w-full flex items-center justify-center px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-green-600 hover:text-white transition-colors duration-300">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <!-- Logo Overlay section - removed checkbox -->
+            <div class="accordion-section">
+                <div class="accordion-header" data-accordion="logoOverlay">
+                    <div class="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span>Logo Overlay</span>
+                    </div>
+                    <div class="accordion-icon-container">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="accordion-content" id="logoOverlay-content">
+                    <!-- Hidden checkbox for state tracking -->
+                    <input type="checkbox" id="showLogoOverlay" class="hidden">
+                    <!-- Hidden element for state tracking (replaces the badge) -->
+                    <span id="logoActiveStatus" class="hidden"></span>
+                    
+                    <div id="logoControls" class="space-y-3">
+                        <button id="uploadLogoBtn" class="logo-action-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                             </svg>
                             <span>Upload Logo</span>
                         </button>
                         <input type="file" id="logoInput" accept="image/png, image/jpeg, image/gif" class="hidden">
                         
+                        <p class="text-xs text-gray-600 dark:text-gray-400 my-2">
+                            Upload your logo (PNG recommended).
+                        </p>
+                        
                         <!-- Opacity Slider Section -->
-                        <div class="">
-                            <label for="logoOpacity" class="flex items-center text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div class="mt-3">
+                            <label class="slider-label">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                 </svg>
-                                <span>Opacity</span>
+                                Opacity
                             </label>
-                            <input type="range" id="logoOpacity" min="10" max="100" value="100" class="w-full h-2 bg-gray-300 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb-green">
+                            <input type="range" id="logoOpacity" min="10" max="100" value="100" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
                         </div>
                         
-                        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                            <p>Tip: Click logo to show controls. Use left-click, ESC or ENTER to finish editing.</p>
+                        <div class="text-xs text-gray-600 dark:text-gray-400 mt-2 bg-gray-100 dark:bg-gray-700 p-2 rounded-lg">
+                            <p class="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Click logo to show controls. Use left-click, ESC or ENTER to finish editing.
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
             
             <!-- Grid Guides toggle -->
-            <div class="border-t border-gray-200 dark:border-gray-700 py-2">
-                <label class="flex items-center space-x-2 text-gray-900 dark:text-white cursor-pointer">
-                    <input type="checkbox" id="showGridGuides" class="rounded border-gray-300 text-green-600 focus:ring-green-500" checked>
-                    <span>Show Grid Guides</span>
+            <div class="toggle-container">
+                <div class="flex flex-col">
+                    <span class="toggle-label">Grid Guides</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Toggle visibility of the 4x3 grid guides</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="showGridGuides" checked>
+                    <span class="toggle-slider"></span>
                 </label>
-                <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Toggle visibility of the 4x3 grid guides</p>
+            </div>
+            
+            <!-- Login box option with toggle switch -->
+            <div class="toggle-container">
+                <div class="flex flex-col">
+                    <span class="toggle-label">Login Box Overlay</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">Shows the login box (won't appear in final image)</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="showLoginBox">
+                    <span class="toggle-slider"></span>
+                </label>
             </div>
             
             <!-- Space for more options -->
-            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
+            <!-- <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
                 <p class="text-sm text-gray-600 dark:text-gray-400 italic">More options coming soon 🐸☝️</p>
-            </div>
+            </div> -->
         </div>
     </div>
 </body>

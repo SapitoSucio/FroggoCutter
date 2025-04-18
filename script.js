@@ -311,6 +311,17 @@ async function handleImageLoad(file) {
                     }
                 }
                 
+                // Show the sidebar and its tab once the cropper is ready
+                const sidebar = document.getElementById('sidebar');
+                const sidebarTab = document.getElementById('sidebar-tab');
+                if (sidebar && sidebarTab) {
+                    sidebarTab.style.display = 'flex';
+                    // Add a small delay before adding the visible class to ensure the initial state is rendered
+                    setTimeout(() => {
+                        sidebarTab.classList.add('visible');
+                    }, 50);
+                }
+                
                 // Inicializar módulos cuando el cropper está listo
                 if (window.initImageAdjustments) {
                     window.initImageAdjustments(cropper);
@@ -1345,6 +1356,19 @@ function resetUI() {
     }, 50);
   }, 300);
 
+  // Hide the sidebar when resetting the UI
+  const sidebar = document.getElementById('sidebar');
+  const sidebarTab = document.getElementById('sidebar-tab');
+  if (sidebar && sidebarTab) {
+    sidebar.classList.remove('open');
+    sidebar.classList.add('translate-x-full');
+    sidebarTab.classList.remove('visible');
+    // Add a transition delay before hiding completely
+    setTimeout(() => {
+      sidebarTab.style.display = 'none';
+    }, 400); // Match the transition duration in CSS
+  }
+
   // Reset any active logo overlay
   if (window.logoOverlay) {
     window.logoOverlay.removeLogo();
@@ -1596,6 +1620,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let loginBoxOverlay = null;
   let originalLoginBoxWidth = 0;
   let originalLoginBoxHeight = 0;
+  
+  // Hide sidebar initially until the cropper is ready
+  sidebar.classList.add('translate-x-full');
+  sidebarTab.style.display = 'none';
   
   // Importar e inicializar las nuevas funcionalidades
   import('./accordionHandler.js').then(module => {
