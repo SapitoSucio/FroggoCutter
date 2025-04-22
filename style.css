@@ -195,6 +195,11 @@ body.dark-mode select option {
     font-size: 1rem;
   }
   
+  /* Ajuste para la posición del frog en móvil */
+  #cropButton:hover::before {
+    bottom: 33px!important; /* Posición ajustada para móvil */
+  }
+  
   /* Forzar un layout más vertical */
   .flex.flex-wrap.justify-between {
     flex-direction: column;
@@ -208,6 +213,14 @@ body.dark-mode select option {
     font-size: 0.9rem;
     border-radius: 0.5rem;
   }
+}
+
+@media screen and (min-width: 800px) and (max-width: 1200px) {
+   /* Ajuste para la posición del frog en móvil */
+   #cropButton:hover::before {
+    bottom: 45px!important; /* Posición ajustada para móvil */
+  }
+  
 }
 
 /* Mejorar apariencia en pantallas grandes */
@@ -239,9 +252,9 @@ body.dark-mode select option {
 }
 
 #cropButton::before {
-  content: url('https://images.weserv.nl/?url=https://i.imgur.com/IwUzsCd.png?v=4&default=https://i.imgur.com/IwUzsCd.png&maxage=7d&l=9');
+  content: url('https://cdn.voided.host/images/0195f74f-e51c7-85b5-e36d-ad9fd9b8124f/01965cad-38057-d044-8a4a-240bb8e4fbf4.png');
   position: absolute;
-  bottom: 45px;
+  bottom: 55px;
   left: 50%;
   transform: translateX(-30%) scale(0.9);
   opacity: 0;
@@ -251,7 +264,7 @@ body.dark-mode select option {
 }
 
 #cropButton:hover::before {
-  bottom: 40px;
+  bottom: 46px;
   opacity: 1;
   transform: translateX(-30%) scale(1);
 }
