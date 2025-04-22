@@ -282,11 +282,36 @@ body.dark-mode select option {
   z-index: 10;
   pointer-events: auto;
   cursor: pointer;
-  transition: all 0.3s ease-in-out;
+  transition: all 0.3s ease-in-out, border-color 0.4s ease;
   max-height: 100%;
   width: 100%; /* Ensure dropzone takes full width */
   height: 100%; /* Ensure dropzone takes full height */
   box-sizing: border-box; /* Include padding in width/height calculation */
+  border-color: rgba(209, 213, 219, 0.8); /* Base border color with opacity */
+}
+
+/* Add transitions to SVG and text */
+#dropZone svg {
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+#dropZone span {
+  transition: color 0.3s ease;
+}
+
+#dropZone:hover {
+  border-color: rgba(16, 185, 129, 0.8); /* Neon green color on hover */
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); /* Subtle glow effect */
+}
+
+/* Style changes for SVG and text on hover */
+#dropZone:hover svg {
+  color: rgba(16, 185, 129, 0.9) !important; /* Neon green for the icon */
+  transform: scale(1.05); /* Slightly enlarge the icon */
+}
+
+#dropZone:hover span {
+  color: rgba(16, 185, 129, 0.9) !important; /* Neon green for the text */
 }
 
 #dropZone.fade-out {
