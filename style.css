@@ -118,6 +118,107 @@ body.dark-mode select option {
   .flex.flex-wrap.gap-4 {
     margin-bottom: 10px;
   }
+  
+  /* Ajustar la altura en tablets/móviles medianos */
+  .flex-1.relative.flex {
+    min-height: 50vh !important;
+    max-height: 400px;
+    margin-bottom: 5px;
+  }
+  
+  /* Mejorar usabilidad en móviles */
+  #cropButton {
+    width: 100%;
+    max-width: 300px;
+    height: 50px; /* Reducir altura del botón en móviles */
+  }
+
+  /* Reducir espaciado vertical entre elementos */
+  .container.mx-auto {
+    gap: 5px;
+  }
+  
+  /* Hacer que el dropZone sea más prominente en móviles */
+  #dropZone svg {
+    height: 3rem;
+    width: 3rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  /* Asegurar que los botones sean grandes en móviles */
+  .flex.flex-wrap.gap-3 button {
+    /* padding: 0.75rem 1rem; */
+    /* margin-bottom: 0.5rem; */
+  }
+  
+  /* Estilos para el panel de formato en móviles */
+  .bg-gray-800.dark\:bg-gray-800 {
+    width: 100%; /* Permitir que ocupe el ancho completo */
+    flex-wrap: wrap; /* Permitir que los elementos se envuelvan */
+    justify-content: center; /* Centrar elementos */
+    margin-bottom: 1rem;
+    gap: 0.75rem; /* Ajustar gap */
+  }
+
+  /* Ocultar el separador SVG vertical en móviles */
+  .bg-gray-800.dark\:bg-gray-800 > svg {
+    display: none;
+  }
+
+  /* Hacer que BitContainer ocupe el ancho completo en la segunda línea */
+  #BitContainer {
+      width: 100%;
+      justify-content: center; /* Centrar contenido de BitContainer */
+      gap: 0.75rem; 
+  }
+
+   #noiseControlContainer.visible {
+       margin-left: 0; /* Reset margin */
+   }
+}
+
+@media screen and (max-width: 480px) {
+  /* Ajustes específicos para móviles muy pequeños */
+  .flex-1.relative.flex {
+    min-height: 42vh !important; /* Reducir aún más la altura del 50vh al 42vh */
+    max-height: 350px; /* Limitar la altura máxima en móviles */
+  }
+  
+  #dropZone span {
+    font-size: 1rem;
+    padding: 0 0.5rem;
+  }
+  
+  /* Ajustar tamaño de la fuente del botón principal */
+  #cropButton {
+    height: 45px;
+    font-size: 1rem;
+  }
+  
+  /* Forzar un layout más vertical */
+  .flex.flex-wrap.justify-between {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  #dark-mode-btn {
+    bottom: 15px;
+    right: 15px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    border-radius: 0.5rem;
+  }
+}
+
+/* Mejorar apariencia en pantallas grandes */
+@media screen and (min-width: 1200px) {
+  .container.mx-auto {
+    max-width: 75%;
+  }
+  
+  .flex-1.relative.flex {
+    min-height: 60vh !important;
+  }
 }
 
 .cropper-container {
@@ -183,6 +284,9 @@ body.dark-mode select option {
   cursor: pointer;
   transition: all 0.3s ease-in-out;
   max-height: 100%;
+  width: 100%; /* Ensure dropzone takes full width */
+  height: 100%; /* Ensure dropzone takes full height */
+  box-sizing: border-box; /* Include padding in width/height calculation */
 }
 
 #dropZone.fade-out {
@@ -827,5 +931,25 @@ select {
 
 .slider-thumb-green:hover::-moz-range-thumb {
   background-color: #059669; /* Darker green on hover */
+}
+
+#dark-mode-btn {
+  position: fixed;
+  bottom: 5px;
+  right: 8px;
+  padding: 0.75rem 1.25rem;
+  background-color: #1f2937;
+  color: white;
+  border-radius: 1rem;
+  transition: all 0.3s;
+  transform-origin: bottom right;
+  z-index: 50;
+  font-weight: 500;
+}
+
+#dark-mode-btn:hover, 
+#dark-mode-btn:active {
+  background-color: #10b981;
+  transform: scale(1.05);
 }
 

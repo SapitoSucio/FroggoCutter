@@ -2,6 +2,7 @@
 <html class="h-full">
 <head>
     <title>FroggoCutter 🐸⚔️ - Ragnarok Online Image Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="Create and edit BMPs and JPGs images for Ragnarok Online client. Crop, adjust and optimize your images for the login screen. 🐸☝️">
     
     <!-- Open Graph / Social Media -->
@@ -58,13 +59,21 @@
     
 </head>
 <body class="h-full flex flex-col min-h-screen bg-gray-100 text-gray-900">
-    <div class="container mx-auto px-4 py-6 flex flex-col h-full">
+    <div class="container mx-auto px-4 py-4 flex flex-col h-full">
         <!-- Área principal para la imagen -->
-        <div class="flex-1 relative flex items-center justify-center mb-4" style="min-height: 70vh;">
+        <div class="flex-1 relative flex items-center justify-center mb-2" style="min-height: min(65vh, 480px);">
             <input type="file" id="imageInput" accept="image/*" class="hidden">
             
-            <div id="dropZone" class="absolute inset-0 border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center text-lg text-gray-500 cursor-pointer hover:border-green-500 transition-colors duration-300 z-10 p-4">
-                Click here, drag and drop, or Ctrl+V to paste an image
+            <div id="dropZone" class="absolute inset-0 border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center text-center p-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <span class="hidden md:inline text-lg md:text-xl text-gray-500 cursor-pointer hover:text-green-500 transition-colors duration-300">
+                    Click here, drag and drop, or Ctrl+V to paste an image
+                </span>
+                <span class="inline md:hidden text-xl text-gray-500 cursor-pointer hover:text-green-500 transition-colors duration-300">
+                    Tap Here
+                </span>
             </div>
 
             <div id="container" class="absolute inset-0 hidden rounded-2xl flex items-center justify-center">
@@ -73,16 +82,19 @@
         </div>
 
         <!-- Controles inferiores -->
-        <div class="mt-auto">
+        <div class="mt-1">
             <!-- Controles en una sola fila -->
-            <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+            <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
                 <!-- Panel de controles de formato: cambiado bg-white a bg-gray-800, añadido text-white, w-fit, flex-grow-0 -->
                 <div class="bg-gray-800 dark:bg-gray-800 text-white p-3 rounded-2xl shadow-md flex flex-wrap gap-3 items-center w-fit flex-grow-0">
-                    <div class="font-medium">Format:</div>
-                    <select id="outputFormat" class="rounded-2xl border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500">
+                    <div class="font-medium text-base">Format:</div>
+                    <select id="outputFormat" class="rounded-2xl border border-gray-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500 text-base">
                         <option value="bmp">BMP</option>
                         <option value="t_login">t_login</option>
                     </select>
+                    
+                    <!-- Horizontal separator for mobile -->
+                    <hr class="w-full border-gray-600 md:hidden my-2">
                     
                     <div id="BitContainer" class="items-center gap-2">
                         
@@ -132,7 +144,7 @@
                             <input type="checkbox" id="8Bit" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
                             <span>8Bit</span>
                         </label>
-                        <div class="relative flex items-center">
+                        <div class="relative flex items-center justify-center">
                             <select id="paletteMethod" disabled class="rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-300 text-gray-900 dark:text-gray-100 dark:bg-gray-600 dark:border-gray-500">
                                 <option value="medianCut">Median Cut</option>
                                 <option value="kmeans">K-Means</option>
@@ -142,7 +154,7 @@
                             </select>
                             
                             <!-- Ícono de información con popup (ahora a la derecha del selector) -->
-                            <button id="methodInfoBtn" class="ml-2 text-green-500 focus:outline-none" aria-label="Method information">
+                            <button id="methodInfoBtn" class="text-green-500 focus:outline-none" aria-label="Method information">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                                 </svg>
@@ -152,86 +164,91 @@
                 </div>
 
                 <!-- Control de relación de aspecto (ahora en el centro) -->
-                <div class="flex flex-wrap gap-4">
+                <div class="flex flex-wrap gap-3 justify-center">
                     <button id="aspectRatio169"
-                            class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300"
+                            class="px-4 py-2.5 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300 text-base font-medium"
                             data-tippy-content="Best aspect ratio for Ragnarok clients in fullscreen">16:9</button>
                     <button id="aspectRatio43"
-                            class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300"
+                            class="px-4 py-2.5 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300 text-base font-medium"
                             data-tippy-content="Standard 4:3 aspect ratio">4:3</button>
                     <button id="aspectRatio11"
-                            class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300"
+                            class="px-4 py-2.5 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300 text-base font-medium"
                             data-tippy-content="Square 1:1 aspect ratio">1:1</button>
                     <button id="aspectRatioFree"
-                            class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300"
+                            class="px-4 py-2.5 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300 text-base font-medium"
                             data-tippy-content="No fixed aspect ratio">Free</button>
                     <button id="reset"
-                            class="px-4 py-2 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300"
+                            class="px-4 py-2.5 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300 text-base font-medium"
                             data-tippy-content="Reset crop area or clear image">Reset</button>
                 </div>
             </div>
 
             <!-- Botón de recorte y descarga (ahora centrado en su propia fila) -->
-            <div class="flex justify-center items-center mb-4">
-                <button id="cropButton" class="relative px-6 py-3 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300 h-12 w-48" disabled="true">
+            <div class="flex justify-center items-center mb-2">
+                <button id="cropButton" class="relative px-6 py-3.5 bg-gray-800 text-white rounded-2xl hover:bg-green-600 transition-colors duration-300 h-14 w-56 font-medium text-lg" disabled="true">
                     <span id="cropText" class="absolute inset-0 flex items-center justify-center transition-all duration-300 ease-in-out">Crop & Download</span>
-                    <span id="loadingText" class="absolute inset-0 flex items-center justify-center transition-all duration-300 ease-in-out translate-y-full opacity-0 text-sm px-2 text-center">Hold on (browser may lock itself)</span>
+                    <span id="loadingText" class="absolute inset-0 flex items-center justify-center transition-all duration-300 ease-in-out translate-y-full opacity-0 text-base px-2 text-center">Hold on (browser may lock itself)</span>
                 </button>
             </div>
         </div>
     </div>
 
     <!-- Popup para información de métodos de cuantificación -->
-    <div id="methodInfoPopup" class="fixed hidden inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg max-w-md w-full text-gray-800 dark:text-white">
-            <h3 class="text-xl font-bold mb-4">Quantization Ranking FTW 🐸☝️</h3>
+    <div id="methodInfoPopup" class="fixed hidden inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-lg max-w-md w-full text-gray-800 dark:text-white">
+            <h3 class="text-lg sm:text-xl font-bold mb-4">Quantization Ranking FTW 🐸☝️</h3>
             
             <!-- Headers para Calidad y Velocidad -->
-            <div class="flex justify-between items-center mb-3 px-3">
+            <div class="flex justify-between items-center mb-3 px-2 sm:px-3 text-sm sm:text-base">
                 <div class="font-medium">Method</div>
-                <div class="flex justify-end w-full max-w-[200px]">
-                    <span class="font-medium text-yellow-500 w-20 text-center">Quality</span>
-                    <span class="font-medium text-blue-400 w-20 text-center">Speed</span>
+                <div class="flex justify-end w-auto sm:w-full sm:max-w-[200px]">
+                    <span class="font-medium text-yellow-500 w-16 sm:w-20 text-center">Quality</span>
+                    <span class="font-medium text-blue-400 w-16 sm:w-20 text-center ml-2 sm:ml-0">Speed</span>
                 </div>
             </div>
-            <div class="space-y-1">
-                <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-3 rounded">
+            <div class="space-y-1 text-sm sm:text-base">
+                <!-- NeuQuant -->
+                <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 sm:p-3 rounded">
                     <div class="font-medium">NeuQuant</div>
-                    <div class="flex justify-end w-full max-w-[200px]">
-                        <span class="text-yellow-500 w-20 text-center">★★★★☆</span>
-                        <span class="text-blue-400 w-20 text-center">★★★☆☆</span>
+                    <div class="flex justify-end w-auto sm:w-full sm:max-w-[200px]">
+                        <span class="text-yellow-500 w-16 sm:w-20 text-center">★★★★☆</span>
+                        <span class="text-blue-400 w-16 sm:w-20 text-center ml-2 sm:ml-0">★★★☆☆</span>
                     </div>
                 </div>
-                <div class="flex justify-between items-center p-3 rounded">
+                <!-- Median Cut -->
+                <div class="flex justify-between items-center p-2 sm:p-3 rounded">
                     <div class="font-medium">Median Cut</div>
-                    <div class="flex justify-end w-full max-w-[200px]">
-                        <span class="text-yellow-500 w-20 text-center">★★★★★</span>
-                        <span class="text-blue-400 w-20 text-center">★★★★☆</span>
+                    <div class="flex justify-end w-auto sm:w-full sm:max-w-[200px]">
+                        <span class="text-yellow-500 w-16 sm:w-20 text-center">★★★★★</span>
+                        <span class="text-blue-400 w-16 sm:w-20 text-center ml-2 sm:ml-0">★★★★☆</span>
                     </div>
                 </div>
-                <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-3 rounded">
+                <!-- K-Means -->
+                <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 sm:p-3 rounded">
                     <div class="font-medium">K-Means</div>
-                    <div class="flex justify-end w-full max-w-[200px]">
-                        <span class="text-yellow-500 w-20 text-center">★★★★☆</span>
-                        <span class="text-blue-400 w-20 text-center">★★★★★</span>
+                    <div class="flex justify-end w-auto sm:w-full sm:max-w-[200px]">
+                        <span class="text-yellow-500 w-16 sm:w-20 text-center">★★★★☆</span>
+                        <span class="text-blue-400 w-16 sm:w-20 text-center ml-2 sm:ml-0">★★★★★</span>
                     </div>
                 </div>
-                <div class="flex justify-between items-center p-3 rounded">
+                <!-- Popularity Quant. -->
+                <div class="flex justify-between items-center p-2 sm:p-3 rounded">
                     <div class="font-medium">Popularity Quant.</div>
-                    <div class="flex justify-end w-full max-w-[200px]">
-                        <span class="text-yellow-500 w-20 text-center">★★☆☆☆</span>
-                        <span class="text-blue-400 w-20 text-center">★★☆☆☆</span>
+                    <div class="flex justify-end w-auto sm:w-full sm:max-w-[200px]">
+                        <span class="text-yellow-500 w-16 sm:w-20 text-center">★★☆☆☆</span>
+                        <span class="text-blue-400 w-16 sm:w-20 text-center ml-2 sm:ml-0">★★☆☆☆</span>
                     </div>
                 </div>
-                <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-3 rounded">
+                <!-- Error Diffusion -->
+                <div class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 sm:p-3 rounded">
                     <div class="font-medium">Error Diffusion</div>
-                    <div class="flex justify-end w-full max-w-[200px]">
-                        <span class="text-yellow-500 w-20 text-center">★★☆☆☆</span>
-                        <span class="text-blue-400 w-20 text-center">★☆☆☆☆</span>
+                    <div class="flex justify-end w-auto sm:w-full sm:max-w-[200px]">
+                        <span class="text-yellow-500 w-16 sm:w-20 text-center">★★☆☆☆</span>
+                        <span class="text-blue-400 w-16 sm:w-20 text-center ml-2 sm:ml-0">★☆☆☆☆</span>
                     </div>
                 </div>
             </div>
-            <button id="closeInfoPopup" class="mt-6 w-full px-4 py-2 bg-gray-800 text-white rounded-xl hover:bg-green-600 transition-colors duration-300">Close</button>
+            <button id="closeInfoPopup" class="mt-4 sm:mt-6 w-full px-4 py-2 bg-gray-800 text-white rounded-xl hover:bg-green-600 transition-colors duration-300">Close</button>
         </div>
     </div>
 
